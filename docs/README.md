@@ -9,6 +9,7 @@
 | Clarify — 요구 애매·정책 공백 | `open-questions.md` · (구조적이면) `adr/` |
 | Plan — 계획 수립 | `workflow/plan-guide.md` · `agent-mistakes.md` |
 | 이슈 생성 · PR · 검토 루프 | `workflow/issue-pr-guide.md` |
+| 이슈 완료 체크리스트 (계획 단계·PR 전) | `workflow/issue-completion-checklist.md` |
 | Generate — 구현 | `workflow/generate-guide.md` · `code-convention.md` |
 | Evaluate — 평가·검증 레벨·루프 규칙 | `workflow/evaluate-guide.md` |
 | 실행 모드 · 브랜치 · git | `branch-guide.md` |

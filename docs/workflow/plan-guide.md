@@ -63,6 +63,7 @@ Plan은 코드를 **읽어도** 되지만(영향 범위·리스크 파악용), �
 ## Plan의 산출물
 
 - **전체를 잘게 쪼개 GitHub Issue로** 만든다(`gh issue create`) — 계획 단계에 한꺼번에. 각 이슈 본문엔 WHAT(목표·완료조건·영향범위)을 상세히, HOW는 비운다. 발급된 `#N`을 개발문서에 연결한다. (쪼개기 원칙: 위 "이슈 쪼개기" · 방법: `docs/workflow/issue-pr-guide.md`)
+- 각 이슈에 **완료 체크리스트의 해당 항목 + 검증 레벨 결정(Level 5/6 필요 여부·이유)**을 함께 기재한다 — PR이 이걸 복사한다. (`docs/workflow/issue-completion-checklist.md`)
 - Plan은 **`docs/dev/ongoing/{작업}.md`** 개발문서를 만드는 것으로 이어진다 (`이슈: #N` 필드 포함). 각 이슈의 상세 설계(HOW)는 그 이슈를 집을 때 채운다.
   (문서 작성법·필드·템플릿은 `docs/dev-doc-guide.md` 참고)
 - 필요하면 **API 명세(`docs/api/`)·테이블 명세(`docs/db/`)도 이 단계에서 작성**한다.
