@@ -21,4 +21,8 @@ public enum ErrorCode {
 		this.status = status;
 		this.defaultMessage = defaultMessage;
 	}
+
+	public String getCode() {
+		return name();
+	}
 }

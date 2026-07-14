@@ -1,9 +1,14 @@
 package com.coffeeorder.common.response;
 
+import com.coffeeorder.common.exception.ErrorCode;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Getter;
 
 @Getter
-public final class ApiResponse<T> {
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class ApiResponse<T> {
+
+	private static final String SUCCESS_CODE = "SUCCESS";
 
 	private final String code;
 	private final String message;
@@ -15,15 +20,23 @@ public final class ApiResponse<T> {
 		this.data = data;
 	}
 
-	public static <T> ApiResponse<T> success(T data) {
-		return new ApiResponse<>("SUCCESS", null, data);
+	public static <T> ApiResponse<T> ok(T data) {
+		return new ApiResponse<>(SUCCESS_CODE, null, data);
 	}
 
-	public static ApiResponse<Void> success() {
-		return new ApiResponse<>("SUCCESS", null, null);
+	public static ApiResponse<Void> ok() {
+		return new ApiResponse<>(SUCCESS_CODE, null, null);
 	}
 
-	public static <T> ApiResponse<T> error(String code, String message) {
+	public static ApiResponse<Void> error(ErrorCode errorCode) {
+		return new ApiResponse<>(errorCode.getCode(), errorCode.getDefaultMessage(), null);
+	}
+
+	public static ApiResponse<Void> error(ErrorCode errorCode, String message) {
+		return new ApiResponse<>(errorCode.getCode(), message, null);
+	}
+
+	public static ApiResponse<Void> error(String code, String message) {
 		return new ApiResponse<>(code, message, null);
 	}
 }

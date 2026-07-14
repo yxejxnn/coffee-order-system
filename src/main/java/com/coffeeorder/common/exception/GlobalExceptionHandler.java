@@ -19,7 +19,7 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ApiResponse<Void>> handleCoffeeOrderException(CoffeeOrderException e) {
 		ErrorCode errorCode = e.getErrorCode();
 		return ResponseEntity.status(errorCode.getStatus())
-			.body(ApiResponse.error(errorCode.name(), e.getMessage()));
+			.body(ApiResponse.error(errorCode, e.getMessage()));
 	}
 
 	@ExceptionHandler(MethodArgumentNotValidException.class)
@@ -29,7 +29,7 @@ public class GlobalExceptionHandler {
 			.map(error -> error.getField() + " " + error.getDefaultMessage())
 			.orElse(ErrorCode.INVALID_INPUT.getDefaultMessage());
 		return ResponseEntity.status(ErrorCode.INVALID_INPUT.getStatus())
-			.body(ApiResponse.error(ErrorCode.INVALID_INPUT.name(), message));
+			.body(ApiResponse.error(ErrorCode.INVALID_INPUT, message));
 	}
 
 	@ExceptionHandler(NoResourceFoundException.class)
@@ -42,6 +42,6 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ApiResponse<Void>> handleException(Exception e) {
 		log.error("처리되지 않은 예외 발생", e);
 		return ResponseEntity.status(ErrorCode.INTERNAL_ERROR.getStatus())
-			.body(ApiResponse.error(ErrorCode.INTERNAL_ERROR.name(), ErrorCode.INTERNAL_ERROR.getDefaultMessage()));
+			.body(ApiResponse.error(ErrorCode.INTERNAL_ERROR));
 	}
 }

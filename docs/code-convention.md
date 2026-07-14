@@ -62,7 +62,7 @@ public final class ScheduleResponse {
 public ResponseEntity<ApiResponse<ScheduleResponse>> create(@Valid @RequestBody ScheduleCreateRequest request) {
 	Schedule saved = scheduleService.create(request);
 	return ResponseEntity.status(HttpStatus.CREATED)
-		.body(ApiResponse.success(ScheduleResponse.from(saved)));
+		.body(ApiResponse.ok(ScheduleResponse.from(saved)));
 }
 ```
 
