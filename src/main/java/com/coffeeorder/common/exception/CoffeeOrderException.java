@@ -11,9 +11,4 @@ public class CoffeeOrderException extends RuntimeException {
 		super(errorCode.getMessage());
 		this.errorCode = errorCode;
 	}
-
-	public CoffeeOrderException(ErrorCode errorCode, String message) {
-		super(message);
-		this.errorCode = errorCode;
-	}
 }

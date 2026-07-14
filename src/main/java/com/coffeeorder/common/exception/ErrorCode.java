@@ -11,6 +11,7 @@ public enum ErrorCode {
 	// Common
 	INVALID_INPUT(HttpStatus.BAD_REQUEST, "COMMON_001", "요청 값이 올바르지 않습니다"),
 	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "COMMON_002", "서버 내부 오류가 발생했습니다"),
+	NOT_FOUND(HttpStatus.NOT_FOUND, "COMMON_003", "요청한 경로를 찾을 수 없습니다"),
 
 	// Member
 	MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "MEMBER_001", "존재하지 않는 회원입니다"),

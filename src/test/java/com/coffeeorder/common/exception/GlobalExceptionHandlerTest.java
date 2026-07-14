@@ -33,7 +33,7 @@ class GlobalExceptionHandlerTest {
 
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
 		assertThat(response.getBody()).isNotNull();
-		assertThat(response.getBody().getCode()).isEqualTo("NOT_FOUND");
+		assertThat(response.getBody().getCode()).isEqualTo("COMMON_003");
 	}
 
 	@Test

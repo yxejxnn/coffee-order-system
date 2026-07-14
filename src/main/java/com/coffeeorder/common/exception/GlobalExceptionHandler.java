@@ -3,7 +3,6 @@ package com.coffeeorder.common.exception;
 import com.coffeeorder.common.response.ApiResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -34,8 +33,8 @@ public class GlobalExceptionHandler {
 
 	@ExceptionHandler(NoResourceFoundException.class)
 	public ResponseEntity<ApiResponse<Void>> handleNoResourceFoundException(NoResourceFoundException e) {
-		return ResponseEntity.status(HttpStatus.NOT_FOUND)
-			.body(ApiResponse.error("NOT_FOUND", "요청한 경로를 찾을 수 없습니다"));
+		return ResponseEntity.status(ErrorCode.NOT_FOUND.getStatus())
+			.body(ApiResponse.error(ErrorCode.NOT_FOUND));
 	}
 
 	@ExceptionHandler(Exception.class)
