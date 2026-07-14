@@ -1,0 +1,17 @@
+# Claude Code 개인 설정 (머신/시크릿 특화)
+.claude/settings.local.json
+# 자율 실행 실시간 활동로그 (휘발성 진행관찰 — docs/logs와 달리 커밋 안 함)
+.activity.log
+
+# 빌드 산출물 (프로젝트 빌드 도구에 맞게 조정)
+.gradle
+build/
+target/
+
+# IDE
+.idea
+*.iml
+.vscode/
+
+# OS
+.DS_Store

@@ -1,0 +1,17 @@
+#!/bin/sh
+# main/dev로의 직접 push 차단 — feature 브랜치만 push하고 PR로 병합한다.
+# git은 push할 ref들을 stdin으로 준다: "<local ref> <local sha> <remote ref> <remote sha>"
+# (이 파일은 저장소에 커밋되어 공유된다. `.git/hooks/`는 클론 시 사라지므로,
+#  새 클론에서는 `sh .harness/hooks/install.sh` 로 이 훅을 설치한다.)
+while read -r local_ref local_sha remote_ref remote_sha; do
+	case "$remote_ref" in
+		refs/heads/main|refs/heads/master|refs/heads/dev)
+			echo "" >&2
+			echo "❌ '$remote_ref' 로의 직접 push는 금지되어 있습니다 (main·dev는 PR merge로만 갱신)." >&2
+			echo "   feature 브랜치를 push하고 PR을 올리세요 (base: dev)." >&2
+			echo "   (부득이 우회: git push --no-verify)" >&2
+			exit 1
+			;;
+	esac
+done
+exit 0

@@ -1,0 +1,80 @@
+{
+  "$comment": "하네스 자동화 계층 - Claude Code 훅 + 권한. 팀 공유 설정. 로그 누락 검사는 메인(Stop)과 서브에이전트(SubagentStop) 양쪽에 건다. permissions는 이슈→개발→커밋→push→PR 사이클이 프롬프트 없이 자율 실행되도록 루틴 개발 명령을 broad로 허용한다. push는 feature 브랜치까지 허용하되, main/dev로의 직접 커밋·push는 git 훅(pre-commit·pre-push)이 차단한다(docs/branch-guide.md). PR merge는 사람만 하므로 `gh pr merge`는 deny로 막는다(docs/workflow/issue-pr-guide.md). DB CLI 등 시크릿을 포함하는 권한은 settings.json이 아니라 settings.local.json(gitignore)에 둔다.",
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew *)",
+      "Bash(git status *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git mv *)",
+      "Bash(git switch *)",
+      "Bash(git checkout *)",
+      "Bash(git merge *)",
+      "Bash(git branch *)",
+      "Bash(git log *)",
+      "Bash(git diff *)",
+      "Bash(git reset *)",
+      "Bash(git worktree *)",
+      "Bash(git rev-parse *)",
+      "Bash(git push *)",
+      "Bash(gh issue create *)",
+      "Bash(gh issue view *)",
+      "Bash(gh issue list *)",
+      "Bash(gh issue comment *)",
+      "Bash(gh pr create *)",
+      "Bash(gh pr view *)",
+      "Bash(gh pr list *)",
+      "Bash(gh pr comment *)",
+      "Bash(gh pr diff *)",
+      "Bash(gh pr checks *)",
+      "Bash(curl *)",
+      "Bash(nc *)",
+      "Bash(pkill *)",
+      "Bash(ls *)",
+      "Bash(find *)",
+      "Bash(cat *)",
+      "Bash(grep *)",
+      "Bash(echo *)",
+      "Bash(mv *)",
+      "Bash(mkdir *)",
+      "Bash(cd *)",
+      "Edit",
+      "Write"
+    ],
+    "deny": [
+      "Bash(gh pr merge *)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh .claude/hooks/log-activity.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh .claude/hooks/require-log.sh"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh .claude/hooks/require-log.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

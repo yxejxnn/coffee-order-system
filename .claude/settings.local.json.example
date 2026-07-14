@@ -1,0 +1,12 @@
+{
+  "$comment": "개인/머신 특화 설정 예시. `cp settings.local.json.example settings.local.json` 후 채워 쓴다. settings.local.json은 gitignore 되므로 DB 평문 비번 등 시크릿을 여기 둔다(공유되는 settings.json에는 넣지 않는다).",
+  "permissions": {
+    "allow": [
+      "Bash(mysql *)",
+      "Bash(java -version)",
+      "Bash(./gradlew --version)",
+      "Bash(git --version)",
+      "WebSearch"
+    ]
+  }
+}
