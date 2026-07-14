@@ -8,7 +8,7 @@ public class CoffeeOrderException extends RuntimeException {
 	private final ErrorCode errorCode;
 
 	public CoffeeOrderException(ErrorCode errorCode) {
-		super(errorCode.getDefaultMessage());
+		super(errorCode.getMessage());
 		this.errorCode = errorCode;
 	}
 

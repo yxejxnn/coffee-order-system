@@ -31,10 +31,10 @@
 - 에러:
   | 코드 | 상태 | 조건 |
   |------|------|------|
-  | MEMBER_NOT_FOUND | 404 | 존재하지 않는 회원 |
-  | MENU_NOT_FOUND | 404 | 존재하지 않는 메뉴 |
-  | INVALID_QUANTITY | 400 | quantity ≤ 0 |
-  | INSUFFICIENT_POINT | 409 | 잔액 < 결제금액 |
+  | MEMBER_001 (MEMBER_NOT_FOUND) | 404 | 존재하지 않는 회원 |
+  | MENU_001 (MENU_NOT_FOUND) | 404 | 존재하지 않는 메뉴 |
+  | ORDER_001 (INVALID_QUANTITY) | 400 | quantity ≤ 0 |
+  | POINT_002 (INSUFFICIENT_POINT) | 409 | 잔액 < 결제금액 |
 
 ## 규칙 · 동시성 · 이벤트
 - 처리 순서(하나의 트랜잭션): 회원·메뉴 검증 → `POINT` 행 **비관적 락** → 잔액 확인·차감 → `ORDERS` 저장 → `POINT_HISTORY(USE)` 기록. → [ADR-001](../adr/ADR-001-포인트-동시성제어.md)

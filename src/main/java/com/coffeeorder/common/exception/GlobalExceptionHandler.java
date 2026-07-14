@@ -27,7 +27,7 @@ public class GlobalExceptionHandler {
 		String message = e.getBindingResult().getFieldErrors().stream()
 			.findFirst()
 			.map(error -> error.getField() + " " + error.getDefaultMessage())
-			.orElse(ErrorCode.INVALID_INPUT.getDefaultMessage());
+			.orElse(ErrorCode.INVALID_INPUT.getMessage());
 		return ResponseEntity.status(ErrorCode.INVALID_INPUT.getStatus())
 			.body(ApiResponse.error(ErrorCode.INVALID_INPUT, message));
 	}
