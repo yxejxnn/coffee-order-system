@@ -15,12 +15,6 @@
 - 사용 여부:
 - 이유:
 
-## Evidence
-
-- Automated verification (테스트 결과):
-- Manual QA (Level 5 로컬 기동 / Level 6 실제 HTTP):
-- Evidence files (docs/logs/... 링크):
-
 ## 완료 전 체크리스트
 
 - [ ] `docs/workflow/issue-completion-checklist.md`의 해당 항목을 모두 확인했습니다.
