@@ -8,14 +8,6 @@ assignees: ""
 
 ## 목표
 
-## 실제 실행 검증 결정
-
-<!-- Level 5(로컬 기동)·Level 6(실제 HTTP) 필요 여부. 테스트 Issue의 보수적 기본값은 YES. PR이 이 값을 그대로 복사합니다. -->
-Level 5 required: YES
-Level 5 reason: 실제 애플리케이션 기동 검증이 불필요하다면 NO로 바꾸고 근거를 작성합니다.
-Level 6 required: YES
-Level 6 reason: 실제 HTTP 요청 검증이 불필요하다면 NO로 바꾸고 근거를 작성합니다.
-
 ## 시나리오
 
 ## 완료 기준

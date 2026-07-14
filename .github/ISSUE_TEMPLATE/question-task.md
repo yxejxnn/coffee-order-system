@@ -10,14 +10,6 @@ assignees: ""
 
 ## 질문
 
-## 실제 실행 검증 결정
-
-<!-- Level 5(로컬 기동)·Level 6(실제 HTTP) 필요 여부. 구현 없는 질문 Issue의 기본값은 NO. PR이 이 값을 그대로 복사합니다. -->
-Level 5 required: NO
-Level 5 reason: 구현 없이 정책 결정을 준비하는 질문 작업입니다.
-Level 6 required: NO
-Level 6 reason: 실제 API를 호출하지 않는 질문 작업입니다.
-
 ## 왜 지금 결정해야 하는가
 
 ## 현재 추천안
