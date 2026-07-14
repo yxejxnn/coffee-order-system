@@ -1,5 +1,8 @@
 package com.coffeeorder.common.exception;
 
+import lombok.Getter;
+
+@Getter
 public class CoffeeOrderException extends RuntimeException {
 
 	private final ErrorCode errorCode;
@@ -12,9 +15,5 @@ public class CoffeeOrderException extends RuntimeException {
 	public CoffeeOrderException(ErrorCode errorCode, String message) {
 		super(message);
 		this.errorCode = errorCode;
-	}
-
-	public ErrorCode getErrorCode() {
-		return errorCode;
 	}
 }

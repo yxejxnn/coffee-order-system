@@ -1,7 +1,9 @@
 package com.coffeeorder.common.exception;
 
+import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
+@Getter
 public enum ErrorCode {
 
 	INVALID_INPUT(HttpStatus.BAD_REQUEST, "요청 값이 올바르지 않습니다"),
@@ -18,13 +20,5 @@ public enum ErrorCode {
 	ErrorCode(HttpStatus status, String defaultMessage) {
 		this.status = status;
 		this.defaultMessage = defaultMessage;
-	}
-
-	public HttpStatus getStatus() {
-		return status;
-	}
-
-	public String getDefaultMessage() {
-		return defaultMessage;
 	}
 }

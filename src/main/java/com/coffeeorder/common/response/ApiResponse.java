@@ -1,5 +1,8 @@
 package com.coffeeorder.common.response;
 
+import lombok.Getter;
+
+@Getter
 public final class ApiResponse<T> {
 
 	private final String code;
@@ -22,17 +25,5 @@ public final class ApiResponse<T> {
 
 	public static <T> ApiResponse<T> error(String code, String message) {
 		return new ApiResponse<>(code, message, null);
-	}
-
-	public String getCode() {
-		return code;
-	}
-
-	public String getMessage() {
-		return message;
-	}
-
-	public T getData() {
-		return data;
 	}
 }
