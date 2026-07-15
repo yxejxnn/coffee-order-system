@@ -1,6 +1,7 @@
 package com.coffeeorder.domain.menu.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.Mockito.when;
 
 import com.coffeeorder.common.response.ApiResponse;
@@ -30,7 +31,9 @@ class MenuControllerTest {
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(response.getBody()).isNotNull();
 		assertThat(response.getBody().getCode()).isEqualTo("SUCCESS");
-		assertThat(response.getBody().getData()).containsExactly(menu);
+		assertThat(response.getBody().getData())
+				.extracting(MenuResponse::getId, MenuResponse::getName, MenuResponse::getPrice)
+				.containsExactly(tuple(1L, "아메리카노", 4500));
 	}
 
 	@Test
