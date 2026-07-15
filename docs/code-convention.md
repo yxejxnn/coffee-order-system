@@ -31,6 +31,7 @@
 
 - **생성자 주입**을 사용한다. 필드 `@Autowired` **금지**.
 - 가능하면 필드는 `final`로 둔다.
+- **controller/service 등 일반 컴포넌트는 생성자를 직접 쓰지 않고 Lombok `@RequiredArgsConstructor`로 생성**한다 (엔티티는 예외 — 위 "entity" 항목처럼 필드 생성자를 직접 작성).
 
 ## 트랜잭션
 
@@ -88,5 +89,5 @@ public ResponseEntity<ApiResponse<ScheduleResponse>> create(@Valid @RequestBody 
 ## 현재 상태 메모
 
 <!-- ⚠️ 프로젝트 상황에 맞게 갱신하는 섹션 (Lombok/린터 도입 여부 등). -->
-- **Lombok 도입** — 응답 DTO의 `@Getter`·`@RequiredArgsConstructor` 등에 사용한다. **엔티티는 `@Getter`+`@NoArgsConstructor(access = AccessLevel.PROTECTED)`만 Lombok에 맡기고, 필드를 받는 생성자는 직접 작성**한다. (실제 프로젝트는 `build.gradle`에 lombok 의존성 필요)
+- **Lombok 도입** — 응답 DTO의 `@Getter`·`@RequiredArgsConstructor`, controller/service의 생성자 주입에 `@RequiredArgsConstructor`로 사용한다. **엔티티만 예외**로 `@Getter`+`@NoArgsConstructor(access = AccessLevel.PROTECTED)`만 Lombok에 맡기고, 필드를 받는 생성자는 직접 작성한다. (실제 프로젝트는 `build.gradle`에 lombok 의존성 필요)
 - 정적 분석(Checkstyle 등) 린터는 아직 미설정 — 도입되면 위 규칙 일부가 자동 강제된다.
