@@ -13,6 +13,9 @@ public final class MenuResponse {
 	private final Integer price;
 
 	public static MenuResponse from(Menu menu) {
-		return new MenuResponse(menu.getId(), menu.getName(), menu.getPrice());
+		return new MenuResponse(
+			menu.getId(),
+			menu.getName(),
+			menu.getPrice());
 	}
 }
