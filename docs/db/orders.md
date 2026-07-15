@@ -1,14 +1,14 @@
 # orders (주문/결제 내역)
 
-결제 완료된 주문 1건 = 1행. 인기 메뉴 카운트의 **원천(SSOT)**이며, 주문 완료 이벤트의 근거 데이터.
-(`orders`는 SQL 예약어 `order` 회피를 위한 관용 복수 명명.)
+엔티티 `Order`. 결제 완료된 주문 1건 = 1행. 인기 메뉴 카운트의 **원천(SSOT)**이며, 주문 완료 이벤트의 근거 데이터.
+(테이블명 복수형 컨벤션 — SQL 예약어 `order` 회피와도 부합.)
 
 ## 컬럼
 | 컬럼 | 타입 | 제약 | 설명 |
 |------|------|------|------|
 | id | BIGINT | PK, auto | 식별자 |
-| member_id | BIGINT | FK(member.id), NOT NULL | 주문 회원 |
-| menu_id | BIGINT | FK(menu.id), NOT NULL | 주문 메뉴 |
+| member_id | BIGINT | FK(members.id)\*, NOT NULL | 주문 회원 |
+| menu_id | BIGINT | FK(menus.id)\*, NOT NULL | 주문 메뉴 |
 | quantity | INT | NOT NULL, default 1 | 수량 |
 | unit_price | INT | NOT NULL | 주문 시점 단가 스냅샷 |
 | total_price | BIGINT | NOT NULL | `unit_price * quantity` (차감액) |
@@ -18,6 +18,8 @@
 ## 인덱스
 - uk_order_group_id (order_group_id) — UNIQUE, 멱등/재조회 키.
 - idx_created_menu (created_at, menu_id) — 최근 7일 인기 메뉴 재집계 쿼리용.
+
+\* `member_id`/`menu_id`는 엔티티 연관관계 없이 **FK id(`Long`)만 보유**. → [ADR-005](../adr/ADR-005-엔티티간-FK-ID-참조.md)
 
 ## 관계
 - `MEMBER` 1:N, `MENU` 1:N.

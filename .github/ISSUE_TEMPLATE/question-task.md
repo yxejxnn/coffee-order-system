@@ -1,6 +1,6 @@
 ---
 name: Question
-about: 정책 미확정 또는 튜터 확인이 필요한 질문 (Clarify)
+about: 정책 미확정 또는 추가 확인이 필요한 질문 (Clarify)
 title: "[Question] "
 labels: question
 assignees: ""

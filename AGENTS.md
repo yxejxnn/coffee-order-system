@@ -27,7 +27,7 @@ Clarify → Plan(이슈 쪼개기) →[게이트 A: 승인]→ Generate → Eval
 - 이름: `coffee-order-system` (`com.coffeeorder`)
 - 도메인 / 목적: 다수 서버·다수 인스턴스 환경에서도 정합성을 지키는 **커피 주문 시스템**(K사 서버 개발 사전과제). 메뉴 조회 · 포인트 충전 · 주문/결제(+데이터 수집 플랫폼 전송) · 최근 7일 인기 메뉴 조회.
 - 스택: Java 17(소스 레벨) / JDK 21(런타임) · Spring Boot 4.1.0 · Gradle(Groovy) · MySQL · Redis · Kafka(단일 브로커, KRaft, `spring-kafka` 4.x) · Docker Compose.
-- 채점 핵심: 정답이 아니라 **동시성·데이터 일관성·확장성 선택의 근거**를 설득하는 것. 설계 근거는 `docs/adr/`가 원천이며, 구현 전 **튜터 설계 점검**을 거친다.
+- 채점 핵심: 정답이 아니라 **동시성·데이터 일관성·확장성 선택의 근거**를 설득하는 것. 설계 근거는 `docs/adr/`가 원천이다.
 
 ## 명령어
 
@@ -37,6 +37,8 @@ wrapper(`./gradlew`) 사용, 전역 gradle 금지. (Maven이면 교체)
 ./gradlew build   # 빌드+테스트   ./gradlew test    # 테스트만
 ./gradlew compileJava  # 컴파일 검증   ./gradlew bootRun  # 앱 실행
 ```
+
+> ⚠️ **`./gradlew test`/`build`는 실제 MySQL이 필요하다** (엔티티/리포지토리 계층부터 `@DataJpaTest`가 임베디드 DB 없이 실제 datasource를 씀). 먼저 `docker compose up -d mysql` 후 `DB_USERNAME`/`DB_PASSWORD`(`.env`의 `MYSQL_ROOT_PASSWORD`)를 셸 환경변수로 export하고 실행한다 — `.env`는 docker compose만 읽으므로 Gradle 프로세스엔 별도로 넘겨야 한다.
 
 ## 컨텍스트 라우터
 
