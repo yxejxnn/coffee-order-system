@@ -1,4 +1,4 @@
-package com.coffeeorder.entity;
+package com.coffeeorder.domain.member.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -12,19 +12,16 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 @Entity
-@Table(name = "menu")
+@Table(name = "member")
 @Getter
-public class Menu {
+public class Member {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	@Column(nullable = false, length = 100)
+	@Column(nullable = false, length = 50)
 	private String name;
-
-	@Column(nullable = false)
-	private Integer price;
 
 	@CreationTimestamp
 	@Column(nullable = false, updatable = false)
@@ -34,11 +31,10 @@ public class Menu {
 	@Column(nullable = false)
 	private LocalDateTime updatedAt;
 
-	protected Menu() {
+	protected Member() {
 	}
 
-	public Menu(String name, Integer price) {
+	public Member(String name) {
 		this.name = name;
-		this.price = price;
 	}
 }

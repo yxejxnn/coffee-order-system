@@ -1,4 +1,4 @@
-package com.coffeeorder.entity;
+package com.coffeeorder.domain.point.entity;
 
 public enum PointHistoryType {
 	CHARGE,

@@ -1,6 +1,6 @@
-package com.coffeeorder.repository;
+package com.coffeeorder.domain.order.repository;
 
-import com.coffeeorder.entity.Orders;
+import com.coffeeorder.domain.order.entity.Orders;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface OrdersRepository extends JpaRepository<Orders, Long> {

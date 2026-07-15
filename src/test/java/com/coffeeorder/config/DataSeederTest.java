@@ -5,8 +5,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.coffeeorder.repository.MemberRepository;
-import com.coffeeorder.repository.MenuRepository;
+import com.coffeeorder.domain.member.repository.MemberRepository;
+import com.coffeeorder.domain.menu.repository.MenuRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;

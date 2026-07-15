@@ -20,3 +20,9 @@
   - 보류(사유 기재 후 PR 코멘트로 회신): `DataSeeder`의 check-then-act 레이스·`@Profile` 가드 부재(로컬 개발 스코프상 과설계로 판단), `Orders.totalPrice` 파생 검증 부재(서비스 레이어 책임, #5에서 처리 예정), 5개 엔티티의 `@MappedSuperclass` 추상화(현재 반복 수준에서 시기상조).
 - 결과: `./gradlew build` 재실행 전체 통과(신규 회귀 테스트 1개 포함, 총 6개). 자체 리뷰 1라운드로 마무리.
 - 검증 레벨: **Level 1 PASS** · **Level 3 PASS**.
+
+## Attempt 3 — 2026-07-15  ✅ PASS (패키지 구조 재구성)
+
+- 시도: 사용자 피드백 반영 — 계층 우선(`com.coffeeorder.entity`/`repository`에 5개 도메인이 섞이는 구조)에서 **도메인 우선**(`com.coffeeorder.domain.{member,point,menu,order}.{entity,repository}`)으로 패키지 재구성. `point`/`PointHistory`는 한 도메인(`point`)으로 묶음(잔액+감사이력, ADR-004와 일관). `DataSeeder`는 cross-domain이라 `com.coffeeorder.config`에 그대로 둠. `docs/code-convention.md`에 이 규칙을 명문화(향후 controller/service/dto도 같은 도메인 패키지 하위에 위치).
+- 결과: `./gradlew build` 전체 통과(패키지만 이동, 로직 변경 없음). `EntityMappingTest`를 `com.coffeeorder.domain`(cross-domain 통합 테스트)으로 이동.
+- 검증 레벨: **Level 1 PASS** · **Level 3 PASS**.

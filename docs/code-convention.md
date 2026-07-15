@@ -6,7 +6,10 @@
 ## 패키지 · 계층 구조
 
 - 루트 패키지: `com.coffeeorder`
-- 계층 분리: `controller` / `service` / `repository` / `entity` / `dto`
+- **도메인(기능) 우선 패키징**: `com.coffeeorder.domain.{도메인}.{계층}` (예: `com.coffeeorder.domain.member.entity.Member`, `com.coffeeorder.domain.point.repository.PointRepository`). 계층(`controller`/`service`/`repository`/`entity`/`dto`)이 아니라 **도메인이 먼저** 온다.
+  - 현재 도메인: `member`·`point`(+`PointHistory`, 잔액과 감사이력을 한 도메인으로 묶음)·`menu`·`order`(엔티티 `Orders`) — `docs/db/*.md` 테이블 그룹과 대응.
+  - 여러 도메인을 넘나드는 것(설정·전역 예외 등)은 도메인 패키지 밖(`com.coffeeorder.config`, `com.coffeeorder.common`)에 둔다.
+- 계층 분리(각 도메인 패키지 내부): `controller` / `service` / `repository` / `entity` / `dto`
 - 각 계층의 책임을 지킨다:
   - **controller**: 요청/응답만. 비즈니스 로직 금지 → service로 위임.
   - **service**: 비즈니스 로직, 트랜잭션 경계.

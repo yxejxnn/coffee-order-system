@@ -1,5 +1,6 @@
-package com.coffeeorder.entity;
+package com.coffeeorder.domain.point.entity;
 
+import com.coffeeorder.domain.member.entity.Member;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;

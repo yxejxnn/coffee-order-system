@@ -1,7 +1,10 @@
-package com.coffeeorder.entity;
+package com.coffeeorder.domain.point.entity;
 
+import com.coffeeorder.domain.member.entity.Member;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -10,19 +13,16 @@ import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDateTime;
 import lombok.Getter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
-@Table(
-		name = "orders",
-		uniqueConstraints = @UniqueConstraint(name = "uk_order_group_id", columnNames = "order_group_id"),
-		indexes = @Index(name = "idx_created_menu", columnList = "created_at, menu_id")
-)
+@Table(name = "point_history", indexes = @Index(name = "idx_member_created", columnList = "member_id, created_at"))
 @Getter
-public class Orders {
+public class PointHistory {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -32,35 +32,28 @@ public class Orders {
 	@JoinColumn(name = "member_id", nullable = false)
 	private Member member;
 
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "menu_id", nullable = false)
-	private Menu menu;
+	@Enumerated(EnumType.STRING)
+	@JdbcTypeCode(SqlTypes.VARCHAR)
+	@Column(nullable = false, length = 10)
+	private PointHistoryType type;
 
 	@Column(nullable = false)
-	private Integer quantity;
+	private Long amount;
 
-	@Column(name = "unit_price", nullable = false)
-	private Integer unitPrice;
-
-	@Column(name = "total_price", nullable = false)
-	private Long totalPrice;
-
-	@Column(name = "order_group_id", nullable = false, length = 36)
+	@Column(name = "order_group_id", length = 36)
 	private String orderGroupId;
 
 	@CreationTimestamp
 	@Column(nullable = false, updatable = false)
 	private LocalDateTime createdAt;
 
-	protected Orders() {
+	protected PointHistory() {
 	}
 
-	public Orders(Member member, Menu menu, Integer quantity, Integer unitPrice, Long totalPrice, String orderGroupId) {
+	public PointHistory(Member member, PointHistoryType type, Long amount, String orderGroupId) {
 		this.member = member;
-		this.menu = menu;
-		this.quantity = quantity;
-		this.unitPrice = unitPrice;
-		this.totalPrice = totalPrice;
+		this.type = type;
+		this.amount = amount;
 		this.orderGroupId = orderGroupId;
 	}
 }

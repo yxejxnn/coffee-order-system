@@ -1,13 +1,19 @@
-package com.coffeeorder.entity;
+package com.coffeeorder.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.coffeeorder.repository.MemberRepository;
-import com.coffeeorder.repository.MenuRepository;
-import com.coffeeorder.repository.OrdersRepository;
-import com.coffeeorder.repository.PointHistoryRepository;
-import com.coffeeorder.repository.PointRepository;
+import com.coffeeorder.domain.member.entity.Member;
+import com.coffeeorder.domain.member.repository.MemberRepository;
+import com.coffeeorder.domain.menu.entity.Menu;
+import com.coffeeorder.domain.menu.repository.MenuRepository;
+import com.coffeeorder.domain.order.entity.Orders;
+import com.coffeeorder.domain.order.repository.OrdersRepository;
+import com.coffeeorder.domain.point.entity.Point;
+import com.coffeeorder.domain.point.entity.PointHistory;
+import com.coffeeorder.domain.point.entity.PointHistoryType;
+import com.coffeeorder.domain.point.repository.PointHistoryRepository;
+import com.coffeeorder.domain.point.repository.PointRepository;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

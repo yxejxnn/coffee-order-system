@@ -1,9 +1,9 @@
 package com.coffeeorder.config;
 
-import com.coffeeorder.entity.Member;
-import com.coffeeorder.entity.Menu;
-import com.coffeeorder.repository.MemberRepository;
-import com.coffeeorder.repository.MenuRepository;
+import com.coffeeorder.domain.member.entity.Member;
+import com.coffeeorder.domain.member.repository.MemberRepository;
+import com.coffeeorder.domain.menu.entity.Menu;
+import com.coffeeorder.domain.menu.repository.MenuRepository;
 import java.util.List;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
