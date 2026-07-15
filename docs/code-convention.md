@@ -18,7 +18,12 @@
     - **no-arg 생성자는 `@NoArgsConstructor(access = AccessLevel.PROTECTED)`**(Lombok)로 생성한다 — JPA 프록시 생성용, 직접 호출하지 않으므로 protected로 감춘다.
     - **필드(비즈니스) 생성자는 직접 작성**한다 (Lombok `@AllArgsConstructor`/`@RequiredArgsConstructor` 사용 안 함) — 파라미터 순서·의미를 명시적으로 통제하기 위함.
     - **`@Table(name = "...")`은 복수형**으로 쓴다 (`Member`→`members`, `Point`→`points`, `PointHistory`→`point_histories`, `Menu`→`menus`, `Order`→`orders`). 엔티티/도메인 이름은 단수(Java 클래스명과 일치), 테이블명만 복수형.
-    - **다른 도메인 엔티티 참조는 `@ManyToOne`/`@OneToOne` 객체가 아니라 FK id(`Long`) 컬럼만 보유**한다 (예: `Order.memberId`, `Order.menuId` — `Member`/`Menu` 객체를 갖지 않음). 도메인 패키지 분리와 정합시키고(엔티티 계층에서부터 도메인 간 컴파일 의존 제거) LAZY 로딩/N+1 리스크를 없앤다. 대신 DB FK 제약은 자동 생성되지 않으므로 참조 무결성은 서비스 레이어의 존재 검증에 의존한다. → [ADR-005](adr/ADR-005-엔티티간-FK-ID-참조.md)
+    - **다른 엔티티 참조 방식(객체 연관관계 vs FK id)은 아래 기준으로 그때그때 판단**한다 — 한쪽으로 무조건 통일하지 않는다.
+      - **`@ManyToOne`/`@OneToOne` 객체 참조가 맞는 경우**: 실제로 연관 엔티티의 필드를 함께 조회·응답해야 한다(fetch join으로 한 번에 가져오는 게 이득) / 같은 도메인 내부 참조라 도메인 간 결합이 생기지 않는다 / DB가 FK 제약(참조 무결성)을 자동으로 걸어주길 원한다 / cascade(영속·삭제 전파)가 필요하다.
+      - **FK id(`Long`)만 보유가 맞는 경우**: 그 관계에서 필요한 건 id뿐이다(연관 필드가 필요해지면 그때 별도 조회하면 됨) / 서로 다른 도메인 패키지 간 참조라 엔티티 클래스 간 컴파일 의존을 피하고 싶다 / LAZY 로딩·N+1 리스크를 원천 차단하고 싶다 / 그 엔티티를 다른 도메인과 독립적으로 테스트·영속하고 싶다.
+      - **판단 순서**: 먼저 그 기능의 API/화면 스펙(`docs/api/`)이 연관 엔티티의 필드까지 실제로 필요로 하는지 확인한다. 애매하면 **FK id만 보유**로 시작한다(결합이 약해 나중에 fetch join 조회로 넓히기 쉽고, 반대로 객체 참조를 나중에 id로 좁히는 건 되돌리기 더 번거롭다).
+      - **적용 예**: `Order.memberId`/`Order.menuId`, `Point.memberId`, `PointHistory.memberId` — 계획된 API 응답(`docs/api/order.md` 등)이 raw id만 필요로 하고, 모두 서로 다른 도메인 간 참조라 FK id만 보유를 선택했다. → [ADR-005](adr/ADR-005-엔티티간-FK-ID-참조.md)
+      - FK id만 보유할 경우 DB FK 제약은 자동 생성되지 않으므로, 참조 무결성은 서비스 레이어의 존재 검증(예: `MEMBER_NOT_FOUND`)에 의존하게 됨을 감안한다.
     - **enum 필드는 `@Enumerated(EnumType.STRING)` + `@JdbcTypeCode(SqlTypes.VARCHAR)`를 함께 쓴다.** Hibernate 7이 MySQL 등 네이티브 enum을 지원하는 dialect에서 `@Enumerated(STRING)`만 있으면 기본적으로 `enum(...)` 컬럼을 생성하므로, 스키마 문서(`docs/db/`)가 `VARCHAR`를 명시한 경우 이 조합이 필요하다 (`PointHistory.type` 참고).
   - **dto**: 요청/응답 전용 객체.
 
