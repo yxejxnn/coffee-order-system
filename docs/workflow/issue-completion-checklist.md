@@ -23,7 +23,8 @@
 ## 기록·문서
 
 - [ ] **개발 로그** — 이번 시도(성공/실패)를 `docs/logs/`에 기록. (`docs/logs-guide.md`)
-- [ ] **(merge 후)** design.md 갱신 + ongoing→changes 채번 이동. (`docs/dev-doc-guide.md`)
+- [ ] **design.md 갱신**(SSOT) — **push 전에** 끝내 PR에 포함시킨다 (머지 후로 미루지 않음). (`docs/dev-doc-guide.md`)
+- [ ] **(merge 후)** ongoing→changes 채번 이동. (`docs/dev-doc-guide.md`)
 
 ## git · 프로세스
 
