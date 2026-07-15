@@ -18,12 +18,12 @@ Claude가 PR을 스스로 리뷰·수정해 통과시킨 뒤 **머지 직전에 
 ── 이하 이슈 하나씩 반복 ──
 1. 이슈 집기 → ongoing 문서에 그 이슈의 설계(HOW)를 지금 채움
 2. feature/{이슈번호}-{기능} 브랜치에서 구현 + 커밋   ← Generate
-3. 테스트·규칙 판정 + docs/logs 기록                ← Evaluate
-4. push(feature) → PR 생성(base: dev, "Closes #N")
+3. 테스트·규칙 판정 + docs/logs 기록 + design.md 갱신(SSOT)  ← Evaluate
+4. push(feature) → PR 생성(base: dev, "Closes #N")   (design.md 포함)
 5. Claude 자체 리뷰(/code-review --comment) → 발견사항 수정   (검토+수정 최대 2회, 그 뒤 통과)
 6. 리뷰 통과 → 머지 직전에 멈춤
    ══ 게이트 B: 사람 최종 검토 → 승인 → merge ══
-7. merge 후: 이슈 자동 close · design.md 갱신 · ongoing→changes 이동 · feature 브랜치 삭제 → 다음 이슈(1로)
+7. merge 후: 이슈 자동 close · ongoing→changes 이동 · feature 브랜치 삭제 → 다음 이슈(1로)
 ```
 
 ---
@@ -55,10 +55,11 @@ git switch dev && git switch -c feature/{이슈번호}-{기능}   # 예: feature
 - `dev`에서 분기한다. 커밋은 **기능 구현 단위**(`docs/commit-convention.md`).
 - 구현은 `docs/workflow/generate-guide.md`, 평가·검증 레벨은 `docs/workflow/evaluate-guide.md`.
 - 커밋 본문에 `refs #N`(또는 관련 `changes/00X`)을 링크하면 추적성이 좋다.
+- **Evaluate 통과 후, push 전에 대상 기능 `design.md`를 최종 상태로 갱신**(SSOT, `docs/dev-doc-guide.md`) — 머지 후로 미루지 않고 같은 PR에 포함시킨다.
 
 ## 4. Push + PR 생성 → **멈춤**
 
-Evaluate 통과 후 feature 브랜치를 push하고 PR을 연다. `main`·`dev`로의 직접 push는 훅이 막는다.
+Evaluate 통과 + design.md 갱신 후 feature 브랜치를 push하고 PR을 연다. `main`·`dev`로의 직접 push는 훅이 막는다.
 
 ```bash
 git push -u origin feature/{이슈번호}-{기능}
@@ -105,18 +106,17 @@ git push
 
 ## 7. merge 후 마무리 → 다음 이슈
 
-merge가 완료되면 Claude는:
+merge가 완료되면 Claude는 (design.md는 이미 3단계에서 PR에 포함됐으므로 여기선 손대지 않는다):
 
-1. 대상 기능 **`design.md`를 최종 상태로 갱신**(SSOT).
-2. ongoing 문서를 **`changes/00X`로 채번 이동**.
+1. ongoing 문서를 **`changes/00X`로 채번 이동**.
    - (상세: `docs/dev-doc-guide.md`, `docs/workflow/evaluate-guide.md` "통과 시 후속")
-3. **사용한 feature 브랜치를 삭제**한다 (로컬 + 원격):
+2. **사용한 feature 브랜치를 삭제**한다 (로컬 + 원격):
    ```bash
    git switch dev
    git branch -D feature/{이슈번호}-{기능}                 # 로컬 (원격에서 이미 merge됨)
    git push origin --delete feature/{이슈번호}-{기능}       # 원격 (GitHub 자동삭제 설정이 없으면)
    ```
-4. 이슈 close 확인 → **다음 이슈로** 넘어간다.
+3. 이슈 close 확인 → **다음 이슈로** 넘어간다.
 
 ---
 

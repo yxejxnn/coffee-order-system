@@ -128,12 +128,12 @@ docs/
 | **Clarify** | 미결정 질문 → `docs/open-questions.md`, 구조적 결정 → `docs/adr/` ADR 초안 |
 | **Plan** | **GitHub Issue 생성**(`gh issue create`) + `docs/dev/ongoing/{작업}.md` 생성 (대상·**이슈 #N**·담당·배경·설계·태스크·평가기준·검증레벨) |
 | **게이트 A (계획 승인)** | 이슈 + 계획 + 명세 + ADR을 사용자가 승인 |
-| **Generate** | 승인된 문서대로 구현 |
-| **Push+PR / 게이트 B** | feature push → PR(base: dev, `Closes #N`) → **Claude 자체 리뷰·수정** → 머지 직전 멈춤 → **사람 최종 검토·merge** (`docs/workflow/issue-pr-guide.md`) |
-| **merge 후** | ① `design.md` 작성/갱신(SSOT, 필수) → ② ongoing 문서를 `changes/`로 **파일명 그대로 이동** → ③ **feature 브랜치 삭제**(로컬+원격) |
+| **Generate → Evaluate 통과 후** | 구현 + **`design.md` 작성/갱신(SSOT, 필수)** — 코드와 같은 작업 단위로, **push 전에** 끝내 둔다 |
+| **Push+PR / 게이트 B** | design.md를 포함해 feature push → PR(base: dev, `Closes #N`) → **Claude 자체 리뷰·수정**(코드뿐 아니라 design.md도 리뷰 대상) → 머지 직전 멈춤 → **사람 최종 검토·merge** (`docs/workflow/issue-pr-guide.md`) |
+| **merge 후** | ① ongoing 문서를 `changes/`로 **파일명 그대로 이동** → ② **feature 브랜치 삭제**(로컬+원격) |
 
-> Evaluate 통과 후 design.md 갱신 + ongoing→changes 이동을 빼먹지 않는다.
-> 둘 다 해야 "진행 중 큐"와 "진실의 원천"이 최신 상태를 유지한다.
+> **design.md는 PR에 포함**한다 — 머지 후로 미루지 않는다. 사람이 게이트 B에서 코드와 문서를 한 번에 검토할 수 있고, 자체 리뷰 단계에서 문서-구현 불일치도 잡힌다.
+> merge 후에는 ongoing→changes 이동만 남는다(design.md는 이미 PR에 있었으므로 별도 작업 없음).
 
 ---
 
@@ -153,7 +153,6 @@ grep -rl "담당: 홍길동" docs/dev/ongoing/       # 특정 담당자의 진�
 ## 요약 (한눈에)
 
 1. 새 작업(생성/유지보수) → `docs/dev/ongoing/{작업}.md` 생성 (번호 없음, 담당 표기)
-2. 승인 → 개발 → Evaluate 통과 시:
-   - 대상 기능 `design.md` 갱신(SSOT)
-   - ongoing 문서를 그 기능 `changes/`로 **파일명 그대로 이동**(채번 없음)
-3. 진행 중 현황은 `ls docs/dev/ongoing/`로 한눈에
+2. 승인 → 개발 → Evaluate 통과 시(push 전): 대상 기능 `design.md` 갱신(SSOT), PR에 포함
+3. PR merge 후: ongoing 문서를 그 기능 `changes/`로 **파일명 그대로 이동**(채번 없음)
+4. 진행 중 현황은 `ls docs/dev/ongoing/`로 한눈에
