@@ -46,11 +46,11 @@ class EntityMappingTest {
 	@Test
 	void member_point_isOneToOne_uniquePerMember() {
 		Member member = memberRepository.save(new Member("테스트회원"));
-		pointRepository.save(new Point(member));
+		pointRepository.save(new Point(member.getId()));
 		entityManager.flush();
 
 		assertThatThrownBy(() -> {
-			pointRepository.saveAndFlush(new Point(member));
+			pointRepository.saveAndFlush(new Point(member.getId()));
 		}).isInstanceOf(DataIntegrityViolationException.class);
 	}
 
@@ -59,12 +59,12 @@ class EntityMappingTest {
 		Member member = memberRepository.save(new Member("테스트회원"));
 
 		PointHistory history = pointHistoryRepository.save(
-				new PointHistory(member, PointHistoryType.CHARGE, 10_000L, null));
+				new PointHistory(member.getId(), PointHistoryType.CHARGE, 10_000L, null));
 		entityManager.flush();
 		entityManager.clear();
 
 		PointHistory found = pointHistoryRepository.findById(history.getId()).orElseThrow();
-		assertThat(found.getMember().getId()).isEqualTo(member.getId());
+		assertThat(found.getMemberId()).isEqualTo(member.getId());
 		assertThat(found.getType()).isEqualTo(PointHistoryType.CHARGE);
 		assertThat(found.getAmount()).isEqualTo(10_000L);
 		assertThat(found.getCreatedAt()).isNotNull();
@@ -76,11 +76,11 @@ class EntityMappingTest {
 		Menu menu = menuRepository.save(new Menu("아메리카노", 4500));
 		String orderGroupId = "11111111-1111-1111-1111-111111111111";
 
-		orderRepository.save(new Order(member, menu, 2, 4500, 9000L, orderGroupId));
+		orderRepository.save(new Order(member.getId(), menu.getId(), 2, 4500, 9000L, orderGroupId));
 		entityManager.flush();
 
 		assertThatThrownBy(() -> {
-			orderRepository.saveAndFlush(new Order(member, menu, 1, 4500, 4500L, orderGroupId));
+			orderRepository.saveAndFlush(new Order(member.getId(), menu.getId(), 1, 4500, 4500L, orderGroupId));
 		}).isInstanceOf(DataIntegrityViolationException.class);
 	}
 

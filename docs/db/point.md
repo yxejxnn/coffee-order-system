@@ -7,13 +7,15 @@
 | 컬럼 | 타입 | 제약 | 설명 |
 |------|------|------|------|
 | id | BIGINT | PK, auto | 식별자 |
-| member_id | BIGINT | FK(members.id), NOT NULL, UNIQUE | 회원 (1:1) |
+| member_id | BIGINT | FK(members.id)\*, NOT NULL, UNIQUE | 회원 (1:1) |
 | balance | BIGINT | NOT NULL, default 0 | 현재 잔액(P). 항상 ≥ 0 |
 | created_at | DATETIME | NOT NULL | 생성 시각 |
 | updated_at | DATETIME | NOT NULL | 수정 시각 |
 
 ## 인덱스
 - uk_member_id (member_id) — UNIQUE, 1:1 보장 + 조회 키.
+
+\* `member_id`는 엔티티 연관관계(`@ManyToOne`) 없이 **FK id(`Long`)만 보유** — DB FK 제약은 없고 서비스 레이어 존재 검증에 의존한다. → [ADR-005](../adr/ADR-005-엔티티간-FK-ID-참조.md)
 
 ## 관계
 - `MEMBER` 1:1.

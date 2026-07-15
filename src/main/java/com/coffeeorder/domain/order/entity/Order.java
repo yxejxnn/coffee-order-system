@@ -1,16 +1,11 @@
 package com.coffeeorder.domain.order.entity;
 
-import com.coffeeorder.domain.member.entity.Member;
-import com.coffeeorder.domain.menu.entity.Menu;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDateTime;
@@ -33,13 +28,11 @@ public class Order {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "member_id", nullable = false)
-	private Member member;
+	@Column(name = "member_id", nullable = false)
+	private Long memberId;
 
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "menu_id", nullable = false)
-	private Menu menu;
+	@Column(name = "menu_id", nullable = false)
+	private Long menuId;
 
 	@Column(nullable = false)
 	private Integer quantity;
@@ -57,9 +50,9 @@ public class Order {
 	@Column(nullable = false, updatable = false)
 	private LocalDateTime createdAt;
 
-	public Order(Member member, Menu menu, Integer quantity, Integer unitPrice, Long totalPrice, String orderGroupId) {
-		this.member = member;
-		this.menu = menu;
+	public Order(Long memberId, Long menuId, Integer quantity, Integer unitPrice, Long totalPrice, String orderGroupId) {
+		this.memberId = memberId;
+		this.menuId = menuId;
 		this.quantity = quantity;
 		this.unitPrice = unitPrice;
 		this.totalPrice = totalPrice;

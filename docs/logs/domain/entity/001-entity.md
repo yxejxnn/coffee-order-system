@@ -33,3 +33,10 @@
 - 반영 문서: `docs/db/erd.md`(ERD 표기 ORDERS→ORDER, "공통 규칙"에 엔티티=단수/테이블=복수 명시) + 5개 테이블 md(헤더에 엔티티명 병기, FK 참조를 복수형 테이블명으로 수정) + `docs/code-convention.md`(엔티티 생성자·`@Table` 네이밍 규칙 갱신, 기존 "Lombok 생성자 애노테이션 금지" 규칙을 no-arg 한정 허용으로 수정) + `docs/dev/issue-roadmap.md`(#2 목표 엔티티명 갱신). `docs/adr/ADR-004`는 결정 당시 기록이라 유지(그대로 두면 `ORDER 헤더`라는 기각안 표기와 혼동될 위험도 있어 의도적으로 손대지 않음).
 - 결과: 로컬 DB를 초기화(`DROP DATABASE` 후 재생성)하고 `docker compose up -d mysql` 대상으로 `./gradlew build` 재확인 — 6개 테스트 전부 PASS, `SHOW TABLES`로 `members`/`points`/`point_histories`/`menus`/`orders` 5개 테이블 생성 확인.
 - 검증 레벨: **Level 1 PASS** · **Level 3 PASS** · **Level 5 PASS**.
+
+## Attempt 5 — 2026-07-15  ✅ PASS (연관관계 객체 → FK id 전환)
+
+- 시도: 사용자 질문("연관관계를 매핑하는데 객체 자체를 가지고 있을 필요가 있는가?") 검토 후 결정. `docs/api/order.md`·`point.md`·`ranking.md` 응답 스펙을 확인해 연관 엔티티 필드를 직접 노출하는 응답이 하나도 없음을 확인하고, `Point.member`(`@OneToOne`)·`PointHistory.member`(`@ManyToOne`)·`Order.member`/`Order.menu`(`@ManyToOne`)를 전부 제거하고 `Long memberId`/`Long menuId` 컬럼으로 교체. 근거를 [ADR-005](../../adr/ADR-005-엔티티간-FK-ID-참조.md)로 기록.
+- 반영 문서: `docs/code-convention.md`(도메인 간 참조는 FK id만 보유 규칙 추가), `docs/db/point.md`·`point-history.md`·`orders.md`(FK 컬럼에 "DB 제약 아님, ADR-005 참고" 각주 추가), `docs/dev/ongoing/issue-2-domain-entity.md`.
+- 결과: 로컬 DB 재생성 후 `./gradlew build` 재확인 — 6개 테스트 전부 PASS(1:1 unique·order_group_id unique 테스트는 `@JoinColumn` 없이도 `@Table(uniqueConstraints=...)`만으로 그대로 동작). `SHOW CREATE TABLE`로 FK 제약(`CONSTRAINT ... FOREIGN KEY`)이 더는 생성되지 않고, `uk_member_id`/`uk_order_group_id`/`idx_created_menu`는 그대로 유지됨을 확인.
+- 검증 레벨: **Level 1 PASS** · **Level 3 PASS**.

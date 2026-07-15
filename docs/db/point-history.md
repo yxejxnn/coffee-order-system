@@ -7,7 +7,7 @@
 | 컬럼 | 타입 | 제약 | 설명 |
 |------|------|------|------|
 | id | BIGINT | PK, auto | 식별자 |
-| member_id | BIGINT | FK(members.id), NOT NULL | 회원 |
+| member_id | BIGINT | FK(members.id)\*, NOT NULL | 회원 |
 | type | VARCHAR(10) | NOT NULL | `CHARGE`(충전) \| `USE`(주문 결제) |
 | amount | BIGINT | NOT NULL | 증감액(양수). 방향은 `type`이 결정 |
 | order_group_id | VARCHAR(36) | NULL | `USE`일 때 결제 식별자(어떤 주문의 차감인지) |
@@ -15,6 +15,8 @@
 
 ## 인덱스
 - idx_member_created (member_id, created_at) — 회원별 이력 조회.
+
+\* `member_id`는 엔티티 연관관계 없이 **FK id(`Long`)만 보유**. → [ADR-005](../adr/ADR-005-엔티티간-FK-ID-참조.md)
 
 ## 관계
 - `MEMBER` 1:N.

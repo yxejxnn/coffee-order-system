@@ -18,6 +18,7 @@
     - **no-arg 생성자는 `@NoArgsConstructor(access = AccessLevel.PROTECTED)`**(Lombok)로 생성한다 — JPA 프록시 생성용, 직접 호출하지 않으므로 protected로 감춘다.
     - **필드(비즈니스) 생성자는 직접 작성**한다 (Lombok `@AllArgsConstructor`/`@RequiredArgsConstructor` 사용 안 함) — 파라미터 순서·의미를 명시적으로 통제하기 위함.
     - **`@Table(name = "...")`은 복수형**으로 쓴다 (`Member`→`members`, `Point`→`points`, `PointHistory`→`point_histories`, `Menu`→`menus`, `Order`→`orders`). 엔티티/도메인 이름은 단수(Java 클래스명과 일치), 테이블명만 복수형.
+    - **다른 도메인 엔티티 참조는 `@ManyToOne`/`@OneToOne` 객체가 아니라 FK id(`Long`) 컬럼만 보유**한다 (예: `Order.memberId`, `Order.menuId` — `Member`/`Menu` 객체를 갖지 않음). 도메인 패키지 분리와 정합시키고(엔티티 계층에서부터 도메인 간 컴파일 의존 제거) LAZY 로딩/N+1 리스크를 없앤다. 대신 DB FK 제약은 자동 생성되지 않으므로 참조 무결성은 서비스 레이어의 존재 검증에 의존한다. → [ADR-005](adr/ADR-005-엔티티간-FK-ID-참조.md)
     - **enum 필드는 `@Enumerated(EnumType.STRING)` + `@JdbcTypeCode(SqlTypes.VARCHAR)`를 함께 쓴다.** Hibernate 7이 MySQL 등 네이티브 enum을 지원하는 dialect에서 `@Enumerated(STRING)`만 있으면 기본적으로 `enum(...)` 컬럼을 생성하므로, 스키마 문서(`docs/db/`)가 `VARCHAR`를 명시한 경우 이 조합이 필요하다 (`PointHistory.type` 참고).
   - **dto**: 요청/응답 전용 객체.
 
