@@ -55,11 +55,12 @@ Mock 통과는 실제 DB·인프라·API 검증을 **대체하지 못한다** �
 
 Evaluate를 통과하면 바로 "완료"가 아니다:
 1. feature 브랜치를 **push하고 PR을 연다**(base: `dev`, `Closes #N`). 세부: `docs/workflow/issue-pr-guide.md`.
-2. **Claude가 PR을 자체 리뷰(/code-review)→수정**을 통과까지 돌린 뒤, **머지 직전에 멈춰** 사람의 최종 검토를 기다린다. **merge는 사람만.**
-3. 사람이 **merge한 뒤**에 (`docs/dev-doc-guide.md`):
+2. **Claude가 `/code-review --comment`로 PR을 자체 리뷰**해 발견사항을 **실제 PR 코멘트로 남기고**, 그 코멘트를 **수정 → push → 재리뷰**한다. 이 검토+수정 라운드는 **최대 2회** — 2회 안에 다 지워지거나 2회를 채우면 통과(남으면 PR에 기재). 그 뒤 **머지 직전에 멈춰** 사람의 최종 검토를 기다린다. **merge는 사람만.**
+3. 사람이 **merge한 뒤** — 이게 곧 "이 이슈는 승인·완료됐다"는 신호다 (`docs/dev-doc-guide.md`):
    - 대상 기능의 **`design.md`를 최종 상태로 갱신**(SSOT).
    - ongoing 문서를 해당 기능 **`changes/00X`로 채번 이동**.
    - 사용한 **feature 브랜치를 삭제**(로컬+원격).
+   - 이슈 close 확인 후 **별도 확인 없이 바로 다음 이슈로 진행**한다.
 
 ## 실패 시 (루프 규칙 — 원천)
 
