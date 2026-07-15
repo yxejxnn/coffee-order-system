@@ -19,8 +19,8 @@
 - 에러:
   | 코드 | 상태 | 조건 |
   |------|------|------|
-  | INVALID_AMOUNT | 400 | amount ≤ 0 |
-  | MEMBER_NOT_FOUND | 404 | 존재하지 않는 회원 |
+  | POINT_001 (INVALID_AMOUNT) | 400 | amount ≤ 0 |
+  | MEMBER_001 (MEMBER_NOT_FOUND) | 404 | 존재하지 않는 회원 |
 
 ## 규칙 · 동시성
 - 검증은 최소(양수만, 상한 없음). → [policy/point](../policy/point.md)

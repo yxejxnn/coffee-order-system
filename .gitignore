@@ -8,6 +8,9 @@
 build/
 target/
 
+# 시크릿 (docker compose용, .env.example만 커밋)
+.env
+
 # IDE
 .idea
 *.iml
