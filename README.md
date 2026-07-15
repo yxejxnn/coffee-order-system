@@ -27,7 +27,7 @@ AI 코딩 에이전트(Claude Code / Codex 등)가 **막힘없이, 추상적으�
     ├── README.md             # ★ 컨텍스트 라우터 (문서 인덱스) — 무슨 일에 어느 문서를 볼지
     ├── workflow/              # plan-guide · generate-guide · evaluate-guide(검증 레벨 포함)
     ├── adr/                   # ★ 아키텍처 의사결정 기록 — "왜 이 설계인가" (README + 템플릿)
-    ├── open-questions.md      # ★ Clarify 산출물 — 미결정/튜터 질문 로그
+    ├── open-questions.md      # ★ Clarify 산출물 — 미결정 질문 로그
     ├── agent-mistakes.md      # ★ 반복 실수 학습 루프 (Plan 단계에서 읽음)
     ├── dev-doc-guide.md       # 개발문서(ongoing/design/changes) 작성법
     ├── logs-guide.md          # 실행 이력·증거 로그 작성법

@@ -12,7 +12,7 @@
 
 ## 관련 결정·질문
 - [`docs/api/order.md`](../../api/order.md) · [`ADR-002`](../../adr/ADR-002-주문이벤트-비동기전달.md)
-- Open: 전송 실패 시 재시도/보관 정책 → `docs/open-questions.md` (튜터 확인)
+- Open: 전송 실패 시 재시도/보관 정책 → `docs/open-questions.md`
 
 ## 태스크
 - [ ] (집을 때 세분화)
