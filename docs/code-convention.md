@@ -7,14 +7,17 @@
 
 - 루트 패키지: `com.coffeeorder`
 - **도메인(기능) 우선 패키징**: `com.coffeeorder.domain.{도메인}.{계층}` (예: `com.coffeeorder.domain.member.entity.Member`, `com.coffeeorder.domain.point.repository.PointRepository`). 계층(`controller`/`service`/`repository`/`entity`/`dto`)이 아니라 **도메인이 먼저** 온다.
-  - 현재 도메인: `member`·`point`(+`PointHistory`, 잔액과 감사이력을 한 도메인으로 묶음)·`menu`·`order`(엔티티 `Orders`) — `docs/db/*.md` 테이블 그룹과 대응.
+  - 현재 도메인: `member`·`point`(+`PointHistory`, 잔액과 감사이력을 한 도메인으로 묶음)·`menu`·`order`(엔티티 `Order`) — `docs/db/*.md` 테이블 그룹과 대응.
   - 여러 도메인을 넘나드는 것(설정·전역 예외 등)은 도메인 패키지 밖(`com.coffeeorder.config`, `com.coffeeorder.common`)에 둔다.
 - 계층 분리(각 도메인 패키지 내부): `controller` / `service` / `repository` / `entity` / `dto`
 - 각 계층의 책임을 지킨다:
   - **controller**: 요청/응답만. 비즈니스 로직 금지 → service로 위임.
   - **service**: 비즈니스 로직, 트랜잭션 경계.
   - **repository**: 데이터 접근 (`JpaRepository`).
-  - **entity**: JPA 엔티티. 컨트롤러 응답으로 **직접 노출 금지**. 필드를 직접 선언하고 **생성자를 직접 작성**한다 (Lombok 생성자 애노테이션 사용 안 함).
+  - **entity**: JPA 엔티티. 컨트롤러 응답으로 **직접 노출 금지**. 필드를 직접 선언한다.
+    - **no-arg 생성자는 `@NoArgsConstructor(access = AccessLevel.PROTECTED)`**(Lombok)로 생성한다 — JPA 프록시 생성용, 직접 호출하지 않으므로 protected로 감춘다.
+    - **필드(비즈니스) 생성자는 직접 작성**한다 (Lombok `@AllArgsConstructor`/`@RequiredArgsConstructor` 사용 안 함) — 파라미터 순서·의미를 명시적으로 통제하기 위함.
+    - **`@Table(name = "...")`은 복수형**으로 쓴다 (`Member`→`members`, `Point`→`points`, `PointHistory`→`point_histories`, `Menu`→`menus`, `Order`→`orders`). 엔티티/도메인 이름은 단수(Java 클래스명과 일치), 테이블명만 복수형.
     - **enum 필드는 `@Enumerated(EnumType.STRING)` + `@JdbcTypeCode(SqlTypes.VARCHAR)`를 함께 쓴다.** Hibernate 7이 MySQL 등 네이티브 enum을 지원하는 dialect에서 `@Enumerated(STRING)`만 있으면 기본적으로 `enum(...)` 컬럼을 생성하므로, 스키마 문서(`docs/db/`)가 `VARCHAR`를 명시한 경우 이 조합이 필요하다 (`PointHistory.type` 참고).
   - **dto**: 요청/응답 전용 객체.
 
@@ -79,5 +82,5 @@ public ResponseEntity<ApiResponse<ScheduleResponse>> create(@Valid @RequestBody 
 ## 현재 상태 메모
 
 <!-- ⚠️ 프로젝트 상황에 맞게 갱신하는 섹션 (Lombok/린터 도입 여부 등). -->
-- **Lombok 도입** — 응답 DTO의 `@Getter`·`@RequiredArgsConstructor` 등에 사용한다. **엔티티에는 생성자 애노테이션을 쓰지 않고 필드·생성자를 직접 작성**한다. (실제 프로젝트는 `build.gradle`에 lombok 의존성 필요)
+- **Lombok 도입** — 응답 DTO의 `@Getter`·`@RequiredArgsConstructor` 등에 사용한다. **엔티티는 `@Getter`+`@NoArgsConstructor(access = AccessLevel.PROTECTED)`만 Lombok에 맡기고, 필드를 받는 생성자는 직접 작성**한다. (실제 프로젝트는 `build.gradle`에 lombok 의존성 필요)
 - 정적 분석(Checkstyle 등) 린터는 아직 미설정 — 도입되면 위 규칙 일부가 자동 강제된다.

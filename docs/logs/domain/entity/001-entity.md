@@ -26,3 +26,10 @@
 - 시도: 사용자 피드백 반영 — 계층 우선(`com.coffeeorder.entity`/`repository`에 5개 도메인이 섞이는 구조)에서 **도메인 우선**(`com.coffeeorder.domain.{member,point,menu,order}.{entity,repository}`)으로 패키지 재구성. `point`/`PointHistory`는 한 도메인(`point`)으로 묶음(잔액+감사이력, ADR-004와 일관). `DataSeeder`는 cross-domain이라 `com.coffeeorder.config`에 그대로 둠. `docs/code-convention.md`에 이 규칙을 명문화(향후 controller/service/dto도 같은 도메인 패키지 하위에 위치).
 - 결과: `./gradlew build` 전체 통과(패키지만 이동, 로직 변경 없음). `EntityMappingTest`를 `com.coffeeorder.domain`(cross-domain 통합 테스트)으로 이동.
 - 검증 레벨: **Level 1 PASS** · **Level 3 PASS**.
+
+## Attempt 4 — 2026-07-15  ✅ PASS (엔티티명·테이블명·생성자 컨벤션 변경)
+
+- 시도: 사용자 피드백 반영 — ① `Orders` 엔티티/리포지토리를 `Order`/`OrderRepository`로 리네이밍(엔티티명은 단수로 통일). ② 5개 엔티티 전부 `@Table(name=...)`을 복수형으로 변경(`member`→`members`, `point`→`points`, `point_history`→`point_histories`, `menu`→`menus`, `orders`는 이미 복수형 유지). ③ 각 엔티티 no-arg 생성자를 손으로 쓴 `protected Entity() {}` 대신 `@NoArgsConstructor(access = AccessLevel.PROTECTED)`(Lombok)로 교체, 필드(비즈니스) 생성자는 그대로 직접 작성 유지.
+- 반영 문서: `docs/db/erd.md`(ERD 표기 ORDERS→ORDER, "공통 규칙"에 엔티티=단수/테이블=복수 명시) + 5개 테이블 md(헤더에 엔티티명 병기, FK 참조를 복수형 테이블명으로 수정) + `docs/code-convention.md`(엔티티 생성자·`@Table` 네이밍 규칙 갱신, 기존 "Lombok 생성자 애노테이션 금지" 규칙을 no-arg 한정 허용으로 수정) + `docs/dev/issue-roadmap.md`(#2 목표 엔티티명 갱신). `docs/adr/ADR-004`는 결정 당시 기록이라 유지(그대로 두면 `ORDER 헤더`라는 기각안 표기와 혼동될 위험도 있어 의도적으로 손대지 않음).
+- 결과: 로컬 DB를 초기화(`DROP DATABASE` 후 재생성)하고 `docker compose up -d mysql` 대상으로 `./gradlew build` 재확인 — 6개 테스트 전부 PASS, `SHOW TABLES`로 `members`/`points`/`point_histories`/`menus`/`orders` 5개 테이블 생성 확인.
+- 검증 레벨: **Level 1 PASS** · **Level 3 PASS** · **Level 5 PASS**.

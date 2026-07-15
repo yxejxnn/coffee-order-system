@@ -14,7 +14,9 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDateTime;
+import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
 @Entity
@@ -24,7 +26,8 @@ import org.hibernate.annotations.CreationTimestamp;
 		indexes = @Index(name = "idx_created_menu", columnList = "created_at, menu_id")
 )
 @Getter
-public class Orders {
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Order {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -54,10 +57,7 @@ public class Orders {
 	@Column(nullable = false, updatable = false)
 	private LocalDateTime createdAt;
 
-	protected Orders() {
-	}
-
-	public Orders(Member member, Menu menu, Integer quantity, Integer unitPrice, Long totalPrice, String orderGroupId) {
+	public Order(Member member, Menu menu, Integer quantity, Integer unitPrice, Long totalPrice, String orderGroupId) {
 		this.member = member;
 		this.menu = menu;
 		this.quantity = quantity;

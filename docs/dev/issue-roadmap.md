@@ -31,7 +31,7 @@
 - **선행**: 없음.
 
 ### #2 domain/entity: 도메인 엔티티 + 스키마 + 시드
-- **목표**: `Member`·`Point`·`PointHistory`·`Menu`·`Orders` JPA 엔티티(생성자 직접 작성, Lombok 생성자 애노테이션 금지) + 회원·메뉴 시드 데이터.
+- **목표**: `Member`·`Point`·`PointHistory`·`Menu`·`Order` JPA 엔티티 + 회원·메뉴 시드 데이터. (생성자·Lombok 정책은 `docs/code-convention.md` 참고 — Generate 중 구체화됨)
 - **완료조건**: 엔티티 ↔ `docs/db/` 명세 일치, 스키마 생성/기동(Level 5), 1:1(Point)·FK 매핑 검증 테스트.
 - **영향범위**: entity, repository(기본), 초기 데이터.
 - **관련 문서**: `docs/db/erd.md` + 각 테이블 md, `docs/adr/ADR-004`.

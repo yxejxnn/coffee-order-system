@@ -14,14 +14,17 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 @Entity
-@Table(name = "point_history", indexes = @Index(name = "idx_member_created", columnList = "member_id, created_at"))
+@Table(name = "point_histories", indexes = @Index(name = "idx_member_created", columnList = "member_id, created_at"))
 @Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class PointHistory {
 
 	@Id
@@ -46,9 +49,6 @@ public class PointHistory {
 	@CreationTimestamp
 	@Column(nullable = false, updatable = false)
 	private LocalDateTime createdAt;
-
-	protected PointHistory() {
-	}
 
 	public PointHistory(Member member, PointHistoryType type, Long amount, String orderGroupId) {
 		this.member = member;

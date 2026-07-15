@@ -12,13 +12,16 @@ import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDateTime;
+import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 @Entity
-@Table(name = "point", uniqueConstraints = @UniqueConstraint(name = "uk_member_id", columnNames = "member_id"))
+@Table(name = "points", uniqueConstraints = @UniqueConstraint(name = "uk_member_id", columnNames = "member_id"))
 @Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Point {
 
 	@Id
@@ -39,9 +42,6 @@ public class Point {
 	@UpdateTimestamp
 	@Column(nullable = false)
 	private LocalDateTime updatedAt;
-
-	protected Point() {
-	}
 
 	public Point(Member member) {
 		this.member = member;

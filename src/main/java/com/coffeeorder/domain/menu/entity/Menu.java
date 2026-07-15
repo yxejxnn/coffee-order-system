@@ -7,13 +7,16 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 @Entity
-@Table(name = "menu")
+@Table(name = "menus")
 @Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Menu {
 
 	@Id
@@ -33,9 +36,6 @@ public class Menu {
 	@UpdateTimestamp
 	@Column(nullable = false)
 	private LocalDateTime updatedAt;
-
-	protected Menu() {
-	}
 
 	public Menu(String name, Integer price) {
 		this.name = name;

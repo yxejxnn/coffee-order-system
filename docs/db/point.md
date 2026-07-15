@@ -1,13 +1,13 @@
-# point (포인트 잔액)
+# points (포인트 잔액)
 
-회원의 **현재 포인트 잔액**. 충전·차감의 동시성 제어가 걸리는 핵심 행.
+엔티티 `Point`. 회원의 **현재 포인트 잔액**. 충전·차감의 동시성 제어가 걸리는 핵심 행.
 `MEMBER`에서 1:1로 분리해 **락 범위를 잔액 행 하나로 최소화**한다. → [ADR-004](../adr/ADR-004-데이터모델-포인트분리.md)
 
 ## 컬럼
 | 컬럼 | 타입 | 제약 | 설명 |
 |------|------|------|------|
 | id | BIGINT | PK, auto | 식별자 |
-| member_id | BIGINT | FK(member.id), NOT NULL, UNIQUE | 회원 (1:1) |
+| member_id | BIGINT | FK(members.id), NOT NULL, UNIQUE | 회원 (1:1) |
 | balance | BIGINT | NOT NULL, default 0 | 현재 잔액(P). 항상 ≥ 0 |
 | created_at | DATETIME | NOT NULL | 생성 시각 |
 | updated_at | DATETIME | NOT NULL | 수정 시각 |

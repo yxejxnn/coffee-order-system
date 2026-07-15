@@ -7,8 +7,8 @@ import com.coffeeorder.domain.member.entity.Member;
 import com.coffeeorder.domain.member.repository.MemberRepository;
 import com.coffeeorder.domain.menu.entity.Menu;
 import com.coffeeorder.domain.menu.repository.MenuRepository;
-import com.coffeeorder.domain.order.entity.Orders;
-import com.coffeeorder.domain.order.repository.OrdersRepository;
+import com.coffeeorder.domain.order.entity.Order;
+import com.coffeeorder.domain.order.repository.OrderRepository;
 import com.coffeeorder.domain.point.entity.Point;
 import com.coffeeorder.domain.point.entity.PointHistory;
 import com.coffeeorder.domain.point.entity.PointHistoryType;
@@ -38,7 +38,7 @@ class EntityMappingTest {
 	private PointHistoryRepository pointHistoryRepository;
 
 	@Autowired
-	private OrdersRepository ordersRepository;
+	private OrderRepository orderRepository;
 
 	@Autowired
 	private EntityManager entityManager;
@@ -76,11 +76,11 @@ class EntityMappingTest {
 		Menu menu = menuRepository.save(new Menu("아메리카노", 4500));
 		String orderGroupId = "11111111-1111-1111-1111-111111111111";
 
-		ordersRepository.save(new Orders(member, menu, 2, 4500, 9000L, orderGroupId));
+		orderRepository.save(new Order(member, menu, 2, 4500, 9000L, orderGroupId));
 		entityManager.flush();
 
 		assertThatThrownBy(() -> {
-			ordersRepository.saveAndFlush(new Orders(member, menu, 1, 4500, 4500L, orderGroupId));
+			orderRepository.saveAndFlush(new Order(member, menu, 1, 4500, 4500L, orderGroupId));
 		}).isInstanceOf(DataIntegrityViolationException.class);
 	}
 
@@ -88,7 +88,7 @@ class EntityMappingTest {
 	void pointHistory_type_isStoredAsVarchar_notNativeEnum() {
 		Object dataType = entityManager
 				.createNativeQuery("SELECT DATA_TYPE FROM information_schema.COLUMNS "
-						+ "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'point_history' AND COLUMN_NAME = 'type'")
+						+ "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'point_histories' AND COLUMN_NAME = 'type'")
 				.getSingleResult();
 
 		assertThat(dataType).isEqualTo("varchar");
