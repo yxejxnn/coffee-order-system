@@ -12,3 +12,11 @@
   - DDL 샘플(`SHOW CREATE TABLE`): `point` — `UNIQUE KEY uk_member_id (member_id)` + FK; `orders` — `UNIQUE KEY uk_order_group_id (order_group_id)` + `KEY idx_created_menu (created_at,menu_id)`; `point_history` — `type varchar(10) NOT NULL` (+ Hibernate가 부가한 CHECK 제약, 문서 스펙과 상충 없음).
   - 시드 확인: `member`에 홍길동/김민준/이서연 3행, `menu`에 아메리카노 4500 등 5행 정상 삽입(앱 재기동 시 중복 삽입 안 됨은 `DataSeederTest`로 검증).
 - 완료 후 `docker compose down`으로 로컬 상태 원복.
+
+## Attempt 2 — 2026-07-15  ✅ PASS (자체 리뷰 반영)
+
+- 시도: PR #17에 `/code-review --comment`로 자체 리뷰(8개 발견사항 인라인 코멘트) 진행 후 반영.
+  - 수정: `OrderRepository` → `OrdersRepository`(다른 리포지토리 네이밍 패턴 통일), `point_history.type` 실제 컬럼 타입(varchar)을 고정하는 회귀 테스트 추가, `code-convention.md`에 엔티티 enum 매핑 규칙 명문화, `AGENTS.md`에 테스트 실행 시 실제 MySQL 필요하다는 안내 추가.
+  - 보류(사유 기재 후 PR 코멘트로 회신): `DataSeeder`의 check-then-act 레이스·`@Profile` 가드 부재(로컬 개발 스코프상 과설계로 판단), `Orders.totalPrice` 파생 검증 부재(서비스 레이어 책임, #5에서 처리 예정), 5개 엔티티의 `@MappedSuperclass` 추상화(현재 반복 수준에서 시기상조).
+- 결과: `./gradlew build` 재실행 전체 통과(신규 회귀 테스트 1개 포함, 총 6개). 자체 리뷰 1라운드로 마무리.
+- 검증 레벨: **Level 1 PASS** · **Level 3 PASS**.
