@@ -18,10 +18,10 @@
 - Level 판단: 로드맵의 "Level 3~4"는 락/외부인프라용 일반 라벨인데 이 기능은 단순 조회라 Level 3(락·동시성)·Level 4(메시징·캐시) 해당 없음. 실제로는 단위 테스트(Service/Controller) + Level 6(실제 HTTP)만 밟는다.
 
 ## 태스크
-- [ ] MenuResponse DTO
-- [ ] MenuService (+ 단위 테스트)
-- [ ] MenuController (+ 단위 테스트)
-- [ ] Level 6 실제 HTTP 확인 + 로그 기록
+- [x] MenuResponse DTO
+- [x] MenuService (+ 단위 테스트)
+- [x] MenuController (+ 단위 테스트)
+- [x] Level 6 실제 HTTP 확인 + 로그 기록
 
 ## 평가(통과) 기준
 - 200 + 목록/빈목록 `[]`, 컨트롤러·서비스 단위 테스트, 실제 HTTP(**Level 6**).
