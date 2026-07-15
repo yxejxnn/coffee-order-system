@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.coffeeorder.repository.MemberRepository;
 import com.coffeeorder.repository.MenuRepository;
-import com.coffeeorder.repository.OrderRepository;
+import com.coffeeorder.repository.OrdersRepository;
 import com.coffeeorder.repository.PointHistoryRepository;
 import com.coffeeorder.repository.PointRepository;
 import jakarta.persistence.EntityManager;
@@ -32,7 +32,7 @@ class EntityMappingTest {
 	private PointHistoryRepository pointHistoryRepository;
 
 	@Autowired
-	private OrderRepository orderRepository;
+	private OrdersRepository ordersRepository;
 
 	@Autowired
 	private EntityManager entityManager;
@@ -70,11 +70,21 @@ class EntityMappingTest {
 		Menu menu = menuRepository.save(new Menu("아메리카노", 4500));
 		String orderGroupId = "11111111-1111-1111-1111-111111111111";
 
-		orderRepository.save(new Orders(member, menu, 2, 4500, 9000L, orderGroupId));
+		ordersRepository.save(new Orders(member, menu, 2, 4500, 9000L, orderGroupId));
 		entityManager.flush();
 
 		assertThatThrownBy(() -> {
-			orderRepository.saveAndFlush(new Orders(member, menu, 1, 4500, 4500L, orderGroupId));
+			ordersRepository.saveAndFlush(new Orders(member, menu, 1, 4500, 4500L, orderGroupId));
 		}).isInstanceOf(DataIntegrityViolationException.class);
+	}
+
+	@Test
+	void pointHistory_type_isStoredAsVarchar_notNativeEnum() {
+		Object dataType = entityManager
+				.createNativeQuery("SELECT DATA_TYPE FROM information_schema.COLUMNS "
+						+ "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'point_history' AND COLUMN_NAME = 'type'")
+				.getSingleResult();
+
+		assertThat(dataType).isEqualTo("varchar");
 	}
 }

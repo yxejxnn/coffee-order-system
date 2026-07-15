@@ -12,6 +12,7 @@
   - **service**: 비즈니스 로직, 트랜잭션 경계.
   - **repository**: 데이터 접근 (`JpaRepository`).
   - **entity**: JPA 엔티티. 컨트롤러 응답으로 **직접 노출 금지**. 필드를 직접 선언하고 **생성자를 직접 작성**한다 (Lombok 생성자 애노테이션 사용 안 함).
+    - **enum 필드는 `@Enumerated(EnumType.STRING)` + `@JdbcTypeCode(SqlTypes.VARCHAR)`를 함께 쓴다.** Hibernate 7이 MySQL 등 네이티브 enum을 지원하는 dialect에서 `@Enumerated(STRING)`만 있으면 기본적으로 `enum(...)` 컬럼을 생성하므로, 스키마 문서(`docs/db/`)가 `VARCHAR`를 명시한 경우 이 조합이 필요하다 (`PointHistory.type` 참고).
   - **dto**: 요청/응답 전용 객체.
 
 ## 의존성 주입
