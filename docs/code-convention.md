@@ -42,6 +42,8 @@
 
 - REST 컨트롤러는 `@RestController`, 매핑은 `/api/...`.
 - 요청 DTO에 Bean Validation(`@Valid` + 제약 애노테이션)을 적용한다.
+  - **제약 애노테이션에는 `message`를 명시**한다(`@NotNull(message = "필수입니다")`). 비워두면 Hibernate Validator 기본 메시지 번들이 **JVM 기본 로케일에 따라** 영어/한글 등으로 달라져 실행 환경마다 응답 메시지가 바뀔 수 있다.
+    - `GlobalExceptionHandler.handleValidationException`이 이미 `필드명 + " " + message`로 조립하므로, **`message`에 필드명을 다시 넣지 않는다**(`"amount는 필수입니다"`처럼 쓰면 최종 메시지가 `"amount amount는 필수입니다"`로 중복된다). `"필수입니다"`처럼 필드명 없이 서술어만 쓴다.
 - 예외는 `@RestControllerAdvice`로 일관 처리한다.
 - 적절한 HTTP 상태코드 사용 (생성 `201`, 조회 `200`, 검증 실패 `400` 등).
 
@@ -59,9 +61,14 @@
   - **응답 DTO**: 엔티티 → DTO 변환은 **정적 팩토리 메서드 `from`**으로 묶는다. 컨트롤러/서비스가 `new`로 직접 조립하지 않는다.
   - **엔티티는 예외** — JPA는 프록시 생성·지연 로딩을 위해 mutable한 no-arg 생성자가 필요해 record로 만들 수 없다. 엔티티는 기존대로 `@Getter`+`@NoArgsConstructor(access = PROTECTED)`(Lombok) + 직접 작성한 필드 생성자를 쓴다.
 - **정적 팩토리(`from`)에서 생성자 인자가 2개 이상이면 인자마다 줄바꿈**한다(한 줄에 다 쓰지 않음) — 어떤 엔티티 필드가 어떤 DTO 필드로 매핑되는지 한눈에 보기 위함.
+- **record 컴포넌트 목록도 2개 이상이면 하나씩 줄바꿈**한다(헤더를 한 줄에 다 쓰지 않음) — 위 정적 팩토리 줄바꿈과 같은 이유.
+- **Bean Validation 애노테이션엔 `message`를 명시**하고(로케일에 안 흔들리도록), `message`엔 필드명을 넣지 않는다 — `GlobalExceptionHandler`가 이미 필드명을 앞에 붙인다(위 "웹 · 검증" 참고).
 
 ```java
-public record ScheduleResponse(Long id, String title) {
+public record ScheduleResponse(
+	Long id,
+	String title
+) {
 
 	public static ScheduleResponse from(Schedule schedule) {
 		return new ScheduleResponse(
@@ -73,8 +80,8 @@ public record ScheduleResponse(Long id, String title) {
 
 ```java
 public record ScheduleCreateRequest(
-	@NotNull String title,
-	@NotNull LocalDateTime startAt
+	@NotNull(message = "필수입니다") String title,
+	@NotNull(message = "필수입니다") LocalDateTime startAt
 ) {
 }
 ```

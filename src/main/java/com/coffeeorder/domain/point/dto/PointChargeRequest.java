@@ -3,7 +3,9 @@ package com.coffeeorder.domain.point.dto;
 import jakarta.validation.constraints.NotNull;
 
 public record PointChargeRequest(
-	@NotNull Long memberId,
-	@NotNull Long amount
+	@NotNull(message = "필수입니다")
+	Long memberId,
+	@NotNull(message = "필수입니다")
+	Long amount
 ) {
 }
