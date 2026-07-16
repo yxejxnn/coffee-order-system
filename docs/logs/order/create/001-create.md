@@ -25,3 +25,14 @@
   → 400 {"code":"ORDER_001","message":"수량은 0보다 커야 합니다"}
   ```
   - 잔액 부족 주문(quantity:2) 시도 후 `POST /api/points/charge {"memberId":9,"amount":1}` → `{"balance":5501}`(5500+1) 확인 — 실패한 주문에서 차감이 전혀 일어나지 않았음을 재확인.
+
+## Attempt 2 — 2026-07-16  ✅ PASS
+- 시도: PR #25 자체 리뷰(`/code-review --comment`, 8개 앵글 서브에이전트 → 후보 다수 중 중복 제거 후 5건을 PR 인라인 코멘트로 게시). 발견 순위:
+  1. **적용** — `PointService.use()`가 `charge()`와 달리 `amount` 유효성 검사가 없어 대칭이 깨짐(현재는 `OrderService`의 quantity 검증 덕에 도달 불가하지만 방어 목적). **수정**: `charge()`와 동일하게 `amount == null || amount <= 0` → `INVALID_AMOUNT` 가드 추가.
+  2. **적용** — `Point.use()`가 `charge()`의 `Math.addExact`와 달리 무방비 `-=`. **수정**: `Math.subtractExact`로 교체.
+  3. **적용** — `charge()`/`use()`가 락 획득+폴백 라인을 복붙. **수정**: `getLockedPoint(memberId)` private 헬퍼로 추출해 공유.
+  4. **적용**(테스트 커버리지) — `PointService.use()`를 직접 겨냥한 단위 테스트 부재(간접 검증만 있었음). **수정**: `PointServiceTest`에 `use_*` 4건 추가(정상 차감/잔액부족/유효하지 않은 amount/Point 없음 폴백).
+  5. **반영 안 함**(사용자의 기존 결정과 상충 — 되돌리지 않고 확인만 요청) — `use()`도 `charge()`와 같은 락 폴백을 타므로 Point 미생성 회원에 대한 동시 첫 접근 시 `uk_member_id` 충돌 이론적 가능성이 재사용 경로에도 남음. 이는 #4에서 이미 검토·수용된 트레이드오프(`docs/dev/point/charge/design.md`)라 이번 이슈에서 임의로 고치지 않고 PR 코멘트에 사유만 답글로 남김.
+  - PR 인라인 코멘트 5건 중 4건 반영 후 push, 각 스레드 resolve. 1건(#5)은 답글만 남기고 미해결(unresolved) 상태로 게이트 B로 넘김.
+- 결과: `./gradlew test`(전체, 실 MySQL·Redis·Kafka 대상) 43건 전부 PASS(신규 4건: `PointServiceTest.use_*`).
+- 검증 레벨: Level 1(단위+회귀 전체) PASS.

@@ -48,6 +48,6 @@ public class Point {
 	}
 
 	public void use(Long amount) {
-		this.balance -= amount;
+		this.balance = Math.subtractExact(this.balance, amount);
 	}
 }

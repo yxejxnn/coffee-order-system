@@ -28,8 +28,7 @@ public class PointService {
 			throw new CoffeeOrderException(ErrorCode.INVALID_AMOUNT);
 		}
 
-		Point point = pointRepository.findByMemberIdForUpdate(memberId)
-				.orElseGet(() -> createPointForExistingMember(memberId));
+		Point point = getLockedPoint(memberId);
 
 		point.charge(amount);
 		PointHistory history = new PointHistory(memberId, PointHistoryType.CHARGE, amount, null);
@@ -40,8 +39,11 @@ public class PointService {
 
 	@Transactional
 	public Point use(Long memberId, Long amount, String orderGroupId) {
-		Point point = pointRepository.findByMemberIdForUpdate(memberId)
-				.orElseGet(() -> createPointForExistingMember(memberId));
+		if (amount == null || amount <= 0) {
+			throw new CoffeeOrderException(ErrorCode.INVALID_AMOUNT);
+		}
+
+		Point point = getLockedPoint(memberId);
 
 		if (point.getBalance() < amount) {
 			throw new CoffeeOrderException(ErrorCode.INSUFFICIENT_POINT);
@@ -52,6 +54,11 @@ public class PointService {
 		pointHistoryRepository.save(history);
 
 		return point;
+	}
+
+	private Point getLockedPoint(Long memberId) {
+		return pointRepository.findByMemberIdForUpdate(memberId)
+				.orElseGet(() -> createPointForExistingMember(memberId));
 	}
 
 	// POINT는 시드에서 MEMBER와 함께 생성되지만, 시드 이전에 만들어진 회원 등 그 불변식이 깨진 경우를 대비해
