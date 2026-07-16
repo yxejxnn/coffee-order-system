@@ -53,28 +53,36 @@
   - `ApiResponse<T>`는 공통 응답 래퍼(상태·데이터·메시지를 감싸는 표준 봉투). 프로젝트에 없으면 만들어 둔다.
   - HTTP 상태코드는 `ResponseEntity`로, 응답 바디의 데이터는 `ApiResponse<T>`로 감싼다.
 
-### 응답 DTO
-- 클래스·필드는 **`final`**로 두어 불변으로 만든다.
-- 생성자는 직접 쓰지 않고 **`@RequiredArgsConstructor`**(Lombok)로 생성한다. (JSON 직렬화용 getter는 `@Getter`)
-- 엔티티 → DTO 변환은 **정적 팩토리 메서드 `from`**으로 묶는다. 컨트롤러/서비스가 `new`로 직접 조립하지 않는다.
+### 요청·응답 DTO — record
+- **요청·응답 DTO는 모두 Java `record`로 만든다** (Lombok `@Getter`/`@Setter`/`@NoArgsConstructor`/`@RequiredArgsConstructor` 사용 안 함). record는 필드가 자동으로 불변(`final`)이고, 접근자(`memberId()`처럼 `get` 접두어 없는 메서드)·생성자·`equals`/`hashCode`/`toString`이 자동 생성된다.
+  - **요청 DTO**: `@Valid`로 바인딩되는 요청 바디. Jackson이 record를 생성자 파라미터 이름으로 네이티브 바인딩하므로(2.12+) 별도 `@JsonCreator` 없이 그대로 동작한다. 각 컴포넌트에 Bean Validation 애노테이션(`@NotNull` 등)을 붙인다.
+  - **응답 DTO**: 엔티티 → DTO 변환은 **정적 팩토리 메서드 `from`**으로 묶는다. 컨트롤러/서비스가 `new`로 직접 조립하지 않는다.
+  - **엔티티는 예외** — JPA는 프록시 생성·지연 로딩을 위해 mutable한 no-arg 생성자가 필요해 record로 만들 수 없다. 엔티티는 기존대로 `@Getter`+`@NoArgsConstructor(access = PROTECTED)`(Lombok) + 직접 작성한 필드 생성자를 쓴다.
+- **정적 팩토리(`from`)에서 생성자 인자가 2개 이상이면 인자마다 줄바꿈**한다(한 줄에 다 쓰지 않음) — 어떤 엔티티 필드가 어떤 DTO 필드로 매핑되는지 한눈에 보기 위함.
 
 ```java
-@Getter
-@RequiredArgsConstructor
-public final class ScheduleResponse {
-	private final Long id;
-	private final String title;
+public record ScheduleResponse(Long id, String title) {
 
 	public static ScheduleResponse from(Schedule schedule) {
-		return new ScheduleResponse(schedule.getId(), schedule.getTitle());
+		return new ScheduleResponse(
+			schedule.getId(),
+			schedule.getTitle());
 	}
+}
+```
+
+```java
+public record ScheduleCreateRequest(
+	@NotNull String title,
+	@NotNull LocalDateTime startAt
+) {
 }
 ```
 
 ```java
 // 컨트롤러
 public ResponseEntity<ApiResponse<ScheduleResponse>> create(@Valid @RequestBody ScheduleCreateRequest request) {
-	Schedule saved = scheduleService.create(request);
+	Schedule saved = scheduleService.create(request.title(), request.startAt());
 	return ResponseEntity.status(HttpStatus.CREATED)
 		.body(ApiResponse.ok(ScheduleResponse.from(saved)));
 }
@@ -89,5 +97,5 @@ public ResponseEntity<ApiResponse<ScheduleResponse>> create(@Valid @RequestBody 
 ## 현재 상태 메모
 
 <!-- ⚠️ 프로젝트 상황에 맞게 갱신하는 섹션 (Lombok/린터 도입 여부 등). -->
-- **Lombok 도입** — 응답 DTO의 `@Getter`·`@RequiredArgsConstructor`, controller/service의 생성자 주입에 `@RequiredArgsConstructor`로 사용한다. **엔티티만 예외**로 `@Getter`+`@NoArgsConstructor(access = AccessLevel.PROTECTED)`만 Lombok에 맡기고, 필드를 받는 생성자는 직접 작성한다. (실제 프로젝트는 `build.gradle`에 lombok 의존성 필요)
+- **Lombok 도입** — controller/service 등 일반 컴포넌트의 생성자 주입에 `@RequiredArgsConstructor`로 사용한다. **엔티티만 예외**로 `@Getter`+`@NoArgsConstructor(access = AccessLevel.PROTECTED)`만 Lombok에 맡기고, 필드를 받는 생성자는 직접 작성한다. **요청·응답 DTO는 Lombok을 쓰지 않고 record로 만든다**(위 "요청·응답 DTO" 참고) — record가 이미 불변·접근자·생성자를 다 만들어줘서 Lombok이 불필요. (실제 프로젝트는 `build.gradle`에 lombok 의존성 필요)
 - 정적 분석(Checkstyle 등) 린터는 아직 미설정 — 도입되면 위 규칙 일부가 자동 강제된다.
