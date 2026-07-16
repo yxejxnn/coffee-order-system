@@ -38,6 +38,22 @@ public class PointService {
 		return PointChargeResponse.from(point);
 	}
 
+	@Transactional
+	public Point use(Long memberId, Long amount, String orderGroupId) {
+		Point point = pointRepository.findByMemberIdForUpdate(memberId)
+				.orElseGet(() -> createPointForExistingMember(memberId));
+
+		if (point.getBalance() < amount) {
+			throw new CoffeeOrderException(ErrorCode.INSUFFICIENT_POINT);
+		}
+
+		point.use(amount);
+		PointHistory history = new PointHistory(memberId, PointHistoryType.USE, amount, orderGroupId);
+		pointHistoryRepository.save(history);
+
+		return point;
+	}
+
 	// POINT는 시드에서 MEMBER와 함께 생성되지만, 시드 이전에 만들어진 회원 등 그 불변식이 깨진 경우를 대비해
 	// 락 조회가 비었을 때 회원 존재를 별도로 확인하고 없으면 그 자리에서 만든다(회원 존재는 확정된 상태).
 	private Point createPointForExistingMember(Long memberId) {
