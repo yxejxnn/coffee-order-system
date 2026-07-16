@@ -1,18 +1,16 @@
 package com.coffeeorder.domain.collector.mock;
 
 import com.coffeeorder.domain.collector.dto.CollectorTransmitRequest;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 // 외부 데이터 수집 플랫폼 흉내이므로 우리 API 응답 규약(ApiResponse)을 따르지 않는다.
+@Slf4j
 @RestController
 public class MockCollectorController {
-
-	private static final Logger log = LoggerFactory.getLogger(MockCollectorController.class);
 
 	public static final String ORDERS_PATH = "/mock/collector/orders";
 

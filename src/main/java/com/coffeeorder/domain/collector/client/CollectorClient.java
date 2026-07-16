@@ -4,16 +4,15 @@ import com.coffeeorder.domain.collector.dto.CollectorTransmitRequest;
 import com.coffeeorder.domain.collector.mock.MockCollectorController;
 import com.coffeeorder.domain.order.event.OrderCompletedEvent;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class CollectorClient {
 
-	private static final Logger log = LoggerFactory.getLogger(CollectorClient.class);
 	private static final int MAX_ATTEMPTS = 3;
 
 	private final RestClient restClient;

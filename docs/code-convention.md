@@ -106,4 +106,5 @@ public ResponseEntity<ApiResponse<ScheduleResponse>> create(@Valid @RequestBody 
 
 <!-- ⚠️ 프로젝트 상황에 맞게 갱신하는 섹션 (Lombok/린터 도입 여부 등). -->
 - **Lombok 도입** — controller/service 등 일반 컴포넌트의 생성자 주입에 `@RequiredArgsConstructor`로 사용한다. **엔티티만 예외**로 `@Getter`+`@NoArgsConstructor(access = AccessLevel.PROTECTED)`만 Lombok에 맡기고, 필드를 받는 생성자는 직접 작성한다. **요청·응답 DTO는 Lombok을 쓰지 않고 record로 만든다**(위 "요청·응답 DTO" 참고) — record가 이미 불변·접근자·생성자를 다 만들어줘서 Lombok이 불필요. (실제 프로젝트는 `build.gradle`에 lombok 의존성 필요)
+- **로거는 `@Slf4j`(Lombok)로 선언**한다 — `private static final Logger log = LoggerFactory.getLogger(X.class);`를 직접 쓰지 않는다. (#6에서 통일, 그 전엔 수동 선언이 섞여 있었음)
 - 정적 분석(Checkstyle 등) 린터는 아직 미설정 — 도입되면 위 규칙 일부가 자동 강제된다.
