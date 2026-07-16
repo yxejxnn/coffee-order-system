@@ -42,4 +42,8 @@ public class Point {
 		this.memberId = memberId;
 		this.balance = 0L;
 	}
+
+	public void charge(Long amount) {
+		this.balance = Math.addExact(this.balance, amount);
+	}
 }

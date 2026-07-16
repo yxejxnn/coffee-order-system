@@ -32,7 +32,7 @@ class MenuControllerTest {
 		assertThat(response.getBody()).isNotNull();
 		assertThat(response.getBody().getCode()).isEqualTo("SUCCESS");
 		assertThat(response.getBody().getData())
-				.extracting(MenuResponse::getId, MenuResponse::getName, MenuResponse::getPrice)
+				.extracting(MenuResponse::id, MenuResponse::name, MenuResponse::price)
 				.containsExactly(tuple(1L, "아메리카노", 4500));
 	}
 

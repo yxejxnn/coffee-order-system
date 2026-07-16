@@ -5,8 +5,11 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.coffeeorder.domain.member.entity.Member;
 import com.coffeeorder.domain.member.repository.MemberRepository;
 import com.coffeeorder.domain.menu.repository.MenuRepository;
+import com.coffeeorder.domain.point.repository.PointRepository;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -21,15 +24,20 @@ class DataSeederTest {
 	@Mock
 	private MenuRepository menuRepository;
 
+	@Mock
+	private PointRepository pointRepository;
+
 	@Test
-	void run_seedsMembersAndMenus_whenTablesAreEmpty() {
+	void run_seedsMembersMenusAndPoints_whenTablesAreEmpty() {
 		when(memberRepository.count()).thenReturn(0L);
 		when(menuRepository.count()).thenReturn(0L);
+		when(memberRepository.saveAll(any())).thenReturn(List.of(new Member("홍길동"), new Member("김민준")));
 
-		new DataSeeder(memberRepository, menuRepository).run(null);
+		new DataSeeder(memberRepository, menuRepository, pointRepository).run(null);
 
 		verify(memberRepository).saveAll(any());
 		verify(menuRepository).saveAll(any());
+		verify(pointRepository).saveAll(any());
 	}
 
 	@Test
@@ -37,9 +45,10 @@ class DataSeederTest {
 		when(memberRepository.count()).thenReturn(3L);
 		when(menuRepository.count()).thenReturn(5L);
 
-		new DataSeeder(memberRepository, menuRepository).run(null);
+		new DataSeeder(memberRepository, menuRepository, pointRepository).run(null);
 
 		verify(memberRepository, never()).saveAll(any());
 		verify(menuRepository, never()).saveAll(any());
+		verify(pointRepository, never()).saveAll(any());
 	}
 }

@@ -1,7 +1,7 @@
 # domain/entity — Design
 
 ## 개요
-회원(`Member`)·포인트(`Point`)·포인트 이력(`PointHistory`)·메뉴(`Menu`)·주문(`Order`) 5개 JPA 엔티티와 기본 `JpaRepository`, 초기 시드 데이터(회원 3명·메뉴 5개)를 제공한다. 엔티티/리포지토리 계층만 다루며, 이후 모든 기능(#3~#8)이 이 위에서 구현된다.
+회원(`Member`)·포인트(`Point`)·포인트 이력(`PointHistory`)·메뉴(`Menu`)·주문(`Order`) 5개 JPA 엔티티와 기본 `JpaRepository`, 초기 시드 데이터(회원 3명 + 회원별 `Point` 1행·메뉴 5개)를 제공한다. 엔티티/리포지토리 계층만 다루며, 이후 모든 기능(#3~#8)이 이 위에서 구현된다.
 
 ## 패키지 구조
 도메인 우선 패키징: `com.coffeeorder.domain.{도메인}.{entity,repository}`. 도메인 4개 — `member`·`point`(+`PointHistory`, 잔액과 감사이력을 한 도메인으로 묶음)·`menu`·`order`(엔티티 `Order`). 여러 도메인을 다루는 `DataSeeder`(`ApplicationRunner`)는 도메인 패키지 밖 `com.coffeeorder.config`에 위치. 상세 규칙: `docs/code-convention.md`.
@@ -18,7 +18,7 @@
 - `Point`는 `Member`와 1:1(`uk_member_id` unique), 충전/차감 락 범위를 잔액 행 하나로 최소화하기 위해 분리됐다. → [ADR-004](../../../adr/ADR-004-데이터모델-포인트분리.md) · [ADR-001](../../../adr/ADR-001-포인트-동시성제어.md)
 - `PointHistory.type`은 enum(`CHARGE`/`USE`)이며 `@JdbcTypeCode(SqlTypes.VARCHAR)`로 `varchar(10)`을 강제한다(Hibernate 7이 MySQL에서 기본적으로 native `enum(...)`을 생성하는 것을 막기 위함).
 - `Order.orderGroupId`(UUID)는 unique — 결제 단위·Kafka 멱등 키·재조회 키를 겸한다. `idx_created_menu(created_at, menu_id)`는 최근 7일 인기 메뉴 재집계 쿼리용. → [ADR-004](../../../adr/ADR-004-데이터모델-포인트분리.md)
-- `DataSeeder`가 앱 기동 시 회원 3명·메뉴 5개를 각 테이블이 비어 있을 때만 시드한다(idempotent). `Point`/`PointHistory`/`Order`는 시드 대상이 아니다(이슈 스코프가 "회원·메뉴"로 명시, `Point`는 #4 첫 충전에서 lazy 생성).
+- `DataSeeder`가 앱 기동 시 회원 3명·메뉴 5개를 각 테이블이 비어 있을 때만 시드한다(idempotent). **회원을 시드할 때 각 회원의 `Point`(balance 0)도 함께 생성한다** — `Point`는 `Member`와 1:1 불변식이므로 시드 시점부터 항상 존재해야 서비스 로직이 "Point 없음 = 회원 없음"으로 단순하게 판단할 수 있고, 동시에 첫 충전을 두 번 요청했을 때 두 트랜잭션이 동시에 `Point` insert를 시도해 unique 제약이 충돌하는 엣지케이스도 원천적으로 사라진다(#4에서 결정, 최초 계획이던 "#4 첫 충전 시 lazy 생성"에서 변경). `PointHistory`/`Order`는 여전히 시드 대상이 아니다(발생 이력이므로 초기값이 없는 게 자연스러움).
 - FK id만 보유하는 설계상 **DB 레벨 FK 제약은 자동 생성되지 않는다** — 참조 무결성은 서비스 레이어의 존재 검증(`MEMBER_NOT_FOUND`/`MENU_NOT_FOUND`, #4·#5에서 구현)에 의존한다. → [ADR-005](../../../adr/ADR-005-엔티티간-FK-ID-참조.md)
 
 ## 관련 문서
