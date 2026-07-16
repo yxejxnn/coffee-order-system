@@ -40,3 +40,14 @@
   → 400 {"code":"COMMON_001","message":"amount 널이어서는 안됩니다"}
   ```
   세 시나리오 모두 기대대로 동작 확인.
+
+## Attempt 3 — 2026-07-16  ✅ PASS
+- 시도: 게이트 B 대기 중 사용자와의 코드 설명·리뷰 대화에서 나온 피드백을 반영:
+  1. `PointHistory`/`Point`를 `repository.save(new X(...))`처럼 인라인 생성하던 걸 지역 변수로 분리(`PointService`) — 이 프로젝트 서비스 코드에서 쓰던 스타일이 아니라는 지적. → [[feedback_no_inline_new_in_save]]
+  2. `PointChargeRequest`(`@Getter @Setter @NoArgsConstructor`)를 Java `record`로 전환. 사용자가 "다른 DTO들도 다 record로 바꿔달라"고 확장 지시해 `PointChargeResponse`·이미 merge된 `MenuResponse`(#3)까지 함께 전환, 사용처(`PointController`, 관련 테스트) 갱신. `docs/code-convention.md`에 "요청·응답 DTO — record" 섹션 신설. → [[feedback_dto_record]]
+  3. `@NotNull`에 `message`를 명시하지 않아 Hibernate Validator 기본 메시지가 JVM 로케일에 따라 달라지는 문제 발견(사용자 질문 계기) → `message = "필수입니다"`로 명시. `GlobalExceptionHandler`가 필드명을 이미 앞에 붙이므로 `message`엔 필드명을 넣지 않기로 함(처음엔 넣었다가 `"amount amount는 필수입니다"`로 중복되는 걸 발견해 수정).
+  4. record 컴포넌트·정적 팩토리 인자 줄바꿈 규칙을 "2개 이상이면"에서 "필드 개수 무관 항상"으로 명확화(사용자 지시).
+  5. 사용자 질문에 답하며 `Point.charge()`의 검증 로직을 엔티티로 옮기자는 제안 검토 — `CoffeeOrderException`/`ErrorCode`가 API 응답 전용 타입이라 엔티티가 웹 계층에 의존하게 되는 문제, 그리고 검증을 락 획득보다 뒤로 미루게 되는 손해를 근거로 반대 의견 제시, 사용자가 현재 구조 유지로 확정.
+- 결과: `./gradlew test`(전체, 실 MySQL 대상) 25건 전부 PASS. 실제 HTTP로 record 바인딩(Jackson 네이티브)·수정된 검증 메시지(`"amount 필수입니다"`, 필드명 중복 없음) 재확인.
+- 검증 레벨: Level 1(단위+회귀 전체) PASS · Level 6(실제 HTTP) PASS.
+- 커밋: `7ee75fb`(스타일) · `88ce6b2`/`272dff1`/`6074804`/`dff8da6`(DTO record + 컨벤션).
