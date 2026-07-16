@@ -22,9 +22,7 @@ class PointControllerTest {
 
 	@Test
 	void charge_returns200WithChargedBalance() {
-		PointChargeRequest request = new PointChargeRequest();
-		request.setMemberId(1L);
-		request.setAmount(3000L);
+		PointChargeRequest request = new PointChargeRequest(1L, 3000L);
 		when(pointService.charge(1L, 3000L)).thenReturn(new PointChargeResponse(1L, 8000L));
 
 		ResponseEntity<ApiResponse<PointChargeResponse>> response = new PointController(pointService).charge(request);
@@ -32,7 +30,7 @@ class PointControllerTest {
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(response.getBody()).isNotNull();
 		assertThat(response.getBody().getCode()).isEqualTo("SUCCESS");
-		assertThat(response.getBody().getData().getMemberId()).isEqualTo(1L);
-		assertThat(response.getBody().getData().getBalance()).isEqualTo(8000L);
+		assertThat(response.getBody().getData().memberId()).isEqualTo(1L);
+		assertThat(response.getBody().getData().balance()).isEqualTo(8000L);
 	}
 }

@@ -27,9 +27,9 @@ class MenuServiceTest {
 		List<MenuResponse> result = new MenuService(menuRepository).getMenus();
 
 		assertThat(result).hasSize(2);
-		assertThat(result.get(0).getName()).isEqualTo("아메리카노");
-		assertThat(result.get(0).getPrice()).isEqualTo(4500);
-		assertThat(result.get(1).getName()).isEqualTo("카페라떼");
+		assertThat(result.get(0).name()).isEqualTo("아메리카노");
+		assertThat(result.get(0).price()).isEqualTo(4500);
+		assertThat(result.get(1).name()).isEqualTo("카페라떼");
 	}
 
 	@Test

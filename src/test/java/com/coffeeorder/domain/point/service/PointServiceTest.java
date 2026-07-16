@@ -42,8 +42,8 @@ class PointServiceTest {
 
 		PointChargeResponse response = new PointService(pointRepository, pointHistoryRepository, memberRepository).charge(1L, 3000L);
 
-		assertThat(response.getMemberId()).isEqualTo(1L);
-		assertThat(response.getBalance()).isEqualTo(8000L);
+		assertThat(response.memberId()).isEqualTo(1L);
+		assertThat(response.balance()).isEqualTo(8000L);
 		verify(pointHistoryRepository).save(argThatChargeHistory(1L, 3000L));
 	}
 
@@ -94,8 +94,8 @@ class PointServiceTest {
 
 		PointChargeResponse response = pointService.charge(7L, 3000L);
 
-		assertThat(response.getMemberId()).isEqualTo(7L);
-		assertThat(response.getBalance()).isEqualTo(3000L);
+		assertThat(response.memberId()).isEqualTo(7L);
+		assertThat(response.balance()).isEqualTo(3000L);
 	}
 
 	private static PointHistory argThatChargeHistory(Long memberId, Long amount) {

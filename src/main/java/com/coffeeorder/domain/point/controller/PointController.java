@@ -21,7 +21,7 @@ public class PointController {
 
 	@PostMapping("/charge")
 	public ResponseEntity<ApiResponse<PointChargeResponse>> charge(@Valid @RequestBody PointChargeRequest request) {
-		PointChargeResponse response = pointService.charge(request.getMemberId(), request.getAmount());
+		PointChargeResponse response = pointService.charge(request.memberId(), request.amount());
 		return ResponseEntity.ok(ApiResponse.ok(response));
 	}
 }
