@@ -16,3 +16,16 @@
   → 201 {"code":"SUCCESS","data":{"orderGroupId":"0925aed5-833d-45c3-8751-d4364d34b288","memberId":7,"menuId":3,"quantity":1,"totalPrice":4500,"balance":12500}}
   ```
   앱 로그: `[Mock 데이터 수집 플랫폼] 수신: memberId=7, menuId=3, amount=4500` — 주문 → Kafka(`order-completed`) → `collector-group` 컨슈머 → Mock API까지 실제 HTTP로 확인.
+
+## Attempt 2 — 2026-07-16  ✅ PASS
+- 시도: PR #27 자체 리뷰(`/code-review --comment`, 8개 앵글 서브에이전트 → 후보 다수 중 중복 제거 후 7건을 PR 인라인 코멘트로 게시). 발견 순위:
+  1. **적용** — `CollectorClient`가 빌드하는 `RestClient`에 타임아웃이 없어, 수집 플랫폼이 응답 없이 멈추면 유일한 `collector-group` 컨슈머 스레드가 무한정 블로킹될 수 있음. **수정**: HTTP 클라이언트 구성을 신규 `CollectorRestClientConfig`(`@Configuration`)로 분리하고 connect 2초/read 3초 타임아웃 추가. 부수 효과로 `CollectorClient`는 완성된 `RestClient`만 주입받게 돼 `@Value` 때문에 직접 쓰던 생성자를 다시 `@RequiredArgsConstructor`로 되돌림.
+  2. **적용** — `collector.api.base-url` 기본값이 `server.port`와 무관하게 `8080`으로 고정돼, 데모 중 `SERVER_PORT`만 바꿨다가 실제로 겪었던 문제(001-consume.md 위 Attempt 1의 8082/8083 데모 참고). **수정**: `http://localhost:${server.port}`로 변경.
+  3. **적용** — `CollectorTransmitRequest.from(event)` 호출이 재시도 try/catch 바깥에 있어, event가 null인 극단 케이스에서 NPE가 재시도 정책을 벗어나 전파될 수 있음. **수정**: `send()` 진입 시 null 가드 추가.
+  4. **적용**(정리) — `groupId = "collector-group"`이 매직 스트링, `"/mock/collector/orders"`가 두 파일에 리터럴로 중복. **수정**: 각각 `CollectorEventConsumer.GROUP_ID` 상수·`MockCollectorController.ORDERS_PATH` 공개 상수로 추출.
+  5. **적용**(문서) — `docs/dev/order/create/design.md`가 여전히 `JsonSerializer`를 언급(#5 이후 stale). **수정**: `JacksonJsonSerializer`로 정정하고 #6에서 발견했음을 명시.
+  6. **적용**(문서) — `auto-offset-reset: earliest`가 신규 컨슈머 그룹 첫 기동 시 유실은 막지만 반대로 기존 토픽 이력을 한 번에 재처리하는 트레이드오프가 있음(이 프로젝트 환경에선 무해). **수정**: `docs/dev/collector/consume/design.md`에 트레이드오프로 명시(코드는 유지).
+  7. **반영 안 함**(사용자의 기존 결정과 상충 — 되돌리지 않고 PR 코멘트로 사유만 남김) — `MockCollectorController`의 `ResponseEntity<Void>`가 프로젝트 컨벤션(`ResponseEntity<ApiResponse<T>>`)을 문자 그대로 벗어남. Plan 단계에서 승인된 설계(외부 플랫폼 흉내라 우리 응답 봉투를 강제할 이유 없음)라 코드는 유지.
+  - 수정 과정에서 **테스트 버그 1건 추가 발견**: `MockRestServiceServer.bindTo(builder)`로 목을 심은 뒤 `CollectorClient` 생성자가 같은 builder에 `.requestFactory(...)`를 다시 호출해 목 팩토리를 실제 팩토리로 덮어써, 테스트가 실제 네트워크(`mock-collector` 호스트 DNS 실패)로 나가며 깨짐. HTTP 클라이언트 구성을 `CollectorRestClientConfig`로 옮기면서 `CollectorClientTest`도 "builder 생성 → mock 바인딩 → build() → 완성된 RestClient를 CollectorClient에 주입"(순서 고정) 형태로 `@BeforeEach`에 정리해 함께 해결.
+- 결과: `./gradlew test`(전체) 42건 전부 PASS(회귀 없음). 로컬 `bootRun`(포트 8083, `COLLECTOR_API_BASE_URL` 미지정)으로 `collector.api.base-url` 자동 유도 재확인 — Mock 수신 로그 정상 출력.
+- 검증 레벨: Level 1(단위, 회귀 포함) PASS · Level 5(로컬 `bootRun`, 실제 HTTP, base-url 자동 유도 확인) PASS.
