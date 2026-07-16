@@ -19,7 +19,7 @@
 | Resolved | "주문 횟수" = 건수인가 수량인가? | 주문 **건수**(발생 횟수)로 해석 | `policy/popular-menu.md` |
 | Resolved | 인기 메뉴 동점 처리 기준은? | 횟수 desc → `menuId` asc | `policy/popular-menu.md` |
 | Resolved | 메뉴 재고 개념이 있는가? | 없음(무제한 판매) | `db/menu.md` |
-| Open | 데이터 수집 플랫폼 전송 실패 시 정책(재시도 횟수/보관)? | N회 재시도 후 로그(Outbox 미도입) — 확인 필요 | `adr/ADR-002` |
+| Resolved | 데이터 수집 플랫폼 전송 실패 시 정책(재시도 횟수/보관)? | 최대 3회 재시도(프로듀서 `retries: 3`과 동일) 후 ERROR 로그만, DLT·Outbox 없음 | `dev/collector/consume/design.md` |
 | Open | 주문 취소/환불 요구가 있는가? | 범위 밖으로 가정 — 확인 필요 | (해당 시 신규 ADR) |
 
 > Resolved 항목은 이후 다른 방향이 확인되면 해당 문서/ADR을 갱신한다. Open 항목은 확인되는 대로 반영한다.
