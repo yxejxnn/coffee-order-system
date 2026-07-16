@@ -60,9 +60,8 @@
   - **요청 DTO**: `@Valid`로 바인딩되는 요청 바디. Jackson이 record를 생성자 파라미터 이름으로 네이티브 바인딩하므로(2.12+) 별도 `@JsonCreator` 없이 그대로 동작한다. 각 컴포넌트에 Bean Validation 애노테이션(`@NotNull` 등)을 붙인다.
   - **응답 DTO**: 엔티티 → DTO 변환은 **정적 팩토리 메서드 `from`**으로 묶는다. 컨트롤러/서비스가 `new`로 직접 조립하지 않는다.
   - **엔티티는 예외** — JPA는 프록시 생성·지연 로딩을 위해 mutable한 no-arg 생성자가 필요해 record로 만들 수 없다. 엔티티는 기존대로 `@Getter`+`@NoArgsConstructor(access = PROTECTED)`(Lombok) + 직접 작성한 필드 생성자를 쓴다.
-- **정적 팩토리(`from`)에서 생성자 인자가 2개 이상이면 인자마다 줄바꿈**한다(한 줄에 다 쓰지 않음) — 어떤 엔티티 필드가 어떤 DTO 필드로 매핑되는지 한눈에 보기 위함.
-- **record 컴포넌트 목록도 2개 이상이면 하나씩 줄바꿈**한다(헤더를 한 줄에 다 쓰지 않음) — 위 정적 팩토리 줄바꿈과 같은 이유.
-- **Bean Validation 애노테이션엔 `message`를 명시**하고(로케일에 안 흔들리도록), `message`엔 필드명을 넣지 않는다 — `GlobalExceptionHandler`가 이미 필드명을 앞에 붙인다(위 "웹 · 검증" 참고).
+- **record는 필드 개수와 무관하게 항상 줄바꿈해서 작성**한다 — 컴포넌트 목록(헤더)도, 정적 팩토리 `from`의 생성자 호출도 필드/인자 하나당 한 줄. 필드가 1개뿐이어도 한 줄에 몰아 쓰지 않는다. 나중에 필드가 추가돼도 diff가 한 줄만 늘어나게 하기 위함.
+- **Bean Validation 애노테이션은 필드 선언과 별도 줄**에 쓰고, `message`를 명시한다(로케일에 안 흔들리도록). `message`엔 필드명을 넣지 않는다 — `GlobalExceptionHandler`가 이미 필드명을 앞에 붙인다(위 "웹 · 검증" 참고).
 
 ```java
 public record ScheduleResponse(
@@ -80,8 +79,10 @@ public record ScheduleResponse(
 
 ```java
 public record ScheduleCreateRequest(
-	@NotNull(message = "필수입니다") String title,
-	@NotNull(message = "필수입니다") LocalDateTime startAt
+	@NotNull(message = "필수입니다")
+	String title,
+	@NotNull(message = "필수입니다")
+	LocalDateTime startAt
 ) {
 }
 ```
