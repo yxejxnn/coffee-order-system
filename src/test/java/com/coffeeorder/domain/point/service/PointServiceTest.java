@@ -98,10 +98,73 @@ class PointServiceTest {
 		assertThat(response.balance()).isEqualTo(3000L);
 	}
 
+	@Test
+	void use_decreasesBalanceAndRecordsHistory_whenValid() {
+		Point point = new Point(1L);
+		point.charge(10000L);
+		when(pointRepository.findByMemberIdForUpdate(1L)).thenReturn(Optional.of(point));
+
+		Point result = new PointService(pointRepository, pointHistoryRepository, memberRepository).use(1L, 4500L, "group-1");
+
+		assertThat(result.getBalance()).isEqualTo(5500L);
+		verify(pointHistoryRepository).save(argThatUseHistory(1L, 4500L, "group-1"));
+	}
+
+	@Test
+	void use_throwsInsufficientPoint_whenBalanceIsLessThanAmount() {
+		Point point = new Point(1L);
+		point.charge(1000L);
+		when(pointRepository.findByMemberIdForUpdate(1L)).thenReturn(Optional.of(point));
+		PointService pointService = new PointService(pointRepository, pointHistoryRepository, memberRepository);
+
+		assertThatThrownBy(() -> pointService.use(1L, 4500L, "group-1"))
+				.isInstanceOf(CoffeeOrderException.class)
+				.extracting("errorCode")
+				.isEqualTo(ErrorCode.INSUFFICIENT_POINT);
+		verify(pointHistoryRepository, never()).save(any());
+	}
+
+	@Test
+	void use_throwsInvalidAmount_whenAmountIsZeroOrNegative() {
+		PointService pointService = new PointService(pointRepository, pointHistoryRepository, memberRepository);
+
+		assertThatThrownBy(() -> pointService.use(1L, 0L, "group-1"))
+				.isInstanceOf(CoffeeOrderException.class)
+				.extracting("errorCode")
+				.isEqualTo(ErrorCode.INVALID_AMOUNT);
+		assertThatThrownBy(() -> pointService.use(1L, -100L, "group-1"))
+				.isInstanceOf(CoffeeOrderException.class)
+				.extracting("errorCode")
+				.isEqualTo(ErrorCode.INVALID_AMOUNT);
+		verify(pointRepository, never()).findByMemberIdForUpdate(any());
+	}
+
+	@Test
+	void use_createsPointAndThrowsInsufficientPoint_whenPointRowMissingButMemberExists() {
+		when(pointRepository.findByMemberIdForUpdate(7L)).thenReturn(Optional.empty());
+		when(memberRepository.existsById(7L)).thenReturn(true);
+		when(pointRepository.save(org.mockito.ArgumentMatchers.any(Point.class)))
+				.thenAnswer(invocation -> invocation.getArgument(0));
+		PointService pointService = new PointService(pointRepository, pointHistoryRepository, memberRepository);
+
+		assertThatThrownBy(() -> pointService.use(7L, 4500L, "group-1"))
+				.isInstanceOf(CoffeeOrderException.class)
+				.extracting("errorCode")
+				.isEqualTo(ErrorCode.INSUFFICIENT_POINT);
+	}
+
 	private static PointHistory argThatChargeHistory(Long memberId, Long amount) {
 		return org.mockito.ArgumentMatchers.argThat(history ->
 				history.getMemberId().equals(memberId)
 						&& history.getType() == PointHistoryType.CHARGE
 						&& history.getAmount().equals(amount));
+	}
+
+	private static PointHistory argThatUseHistory(Long memberId, Long amount, String orderGroupId) {
+		return org.mockito.ArgumentMatchers.argThat(history ->
+				history.getMemberId().equals(memberId)
+						&& history.getType() == PointHistoryType.USE
+						&& history.getAmount().equals(amount)
+						&& history.getOrderGroupId().equals(orderGroupId));
 	}
 }
