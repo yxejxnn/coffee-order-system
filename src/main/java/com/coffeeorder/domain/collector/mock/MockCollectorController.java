@@ -14,7 +14,9 @@ public class MockCollectorController {
 
 	private static final Logger log = LoggerFactory.getLogger(MockCollectorController.class);
 
-	@PostMapping("/mock/collector/orders")
+	public static final String ORDERS_PATH = "/mock/collector/orders";
+
+	@PostMapping(ORDERS_PATH)
 	public ResponseEntity<Void> receive(@RequestBody CollectorTransmitRequest request) {
 		log.info("[Mock 데이터 수집 플랫폼] 수신: memberId={}, menuId={}, amount={}",
 				request.memberId(), request.menuId(), request.amount());

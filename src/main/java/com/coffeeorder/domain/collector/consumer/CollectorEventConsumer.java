@@ -11,9 +11,11 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class CollectorEventConsumer {
 
+	private static final String GROUP_ID = "collector-group";
+
 	private final CollectorClient collectorClient;
 
-	@KafkaListener(topics = KafkaTopics.ORDER_COMPLETED, groupId = "collector-group")
+	@KafkaListener(topics = KafkaTopics.ORDER_COMPLETED, groupId = GROUP_ID)
 	public void consume(OrderCompletedEvent event) {
 		collectorClient.send(event);
 	}

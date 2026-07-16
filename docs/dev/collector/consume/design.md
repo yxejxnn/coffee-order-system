@@ -4,8 +4,8 @@
 주문 완료 후 발행되는 `OrderCompletedEvent`(`order-completed` 토픽)를 소비해, 주문내역(`memberId, menuId, 결제금액`)을 데이터 수집 플랫폼으로 실시간 전송한다(발제 3). 실제 외부 플랫폼이 없어 같은 애플리케이션 안에 Mock 수신 엔드포인트를 함께 둔다.
 
 ## 연동 인터페이스
-- **입력**: Kafka `order-completed` 토픽, 컨슈머 그룹 `collector-group`. `OrderCompletedEvent`(`orderGroupId, memberId, menuId, totalPrice`)를 그대로 구독한다.
-- **출력**: `POST {collector.api.base-url}/mock/collector/orders` — body `{memberId, menuId, amount}`. `collector.api.base-url` 기본값은 `http://localhost:8080`(자기 자신, 로컬 데모용).
+- **입력**: Kafka `order-completed` 토픽, 컨슈머 그룹 `collector-group`. `OrderCompletedEvent`(`orderGroupId, memberId, menuId, totalPrice`)를 그대로 구독한다. `auto-offset-reset: earliest`로 설정해 신규 컨슈머 그룹이 첫 기동할 때(커밋된 오프셋 없음) 토픽 처음부터 읽는다 — 첫 기동 유실을 막기 위함이나, 트레이드오프로 **토픽에 이미 쌓여 있던 과거 메시지가 있는 환경에서 첫 기동 시 그 이력을 한 번에 재처리**한다(이 프로젝트는 데모/과제 환경이라 실질 영향 없음).
+- **출력**: `POST {collector.api.base-url}{MockCollectorController.ORDERS_PATH}` — body `{memberId, menuId, amount}`. `collector.api.base-url` 기본값은 `http://localhost:${server.port}`(자기 자신, 로컬 데모용 — 포트를 하드코딩하지 않고 `server.port`를 따라간다). 연결 2초·응답 3초 타임아웃을 둬 Mock/실제 엔드포인트가 멈춰도 유일한 `collector-group` 컨슈머 스레드가 무한정 막히지 않게 한다.
 - 받는 쪽 `MockCollectorController`는 페이로드를 로그로 남기고 200만 반환하는 순수 Mock이다.
 
 ## 실패 정책
