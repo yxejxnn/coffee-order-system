@@ -32,7 +32,8 @@ public class PointService {
 				.orElseGet(() -> createPointForExistingMember(memberId));
 
 		point.charge(amount);
-		pointHistoryRepository.save(new PointHistory(memberId, PointHistoryType.CHARGE, amount, null));
+		PointHistory history = new PointHistory(memberId, PointHistoryType.CHARGE, amount, null);
+		pointHistoryRepository.save(history);
 
 		return PointChargeResponse.from(point);
 	}
@@ -43,6 +44,7 @@ public class PointService {
 		if (!memberRepository.existsById(memberId)) {
 			throw new CoffeeOrderException(ErrorCode.MEMBER_NOT_FOUND);
 		}
-		return pointRepository.save(new Point(memberId));
+		Point newPoint = new Point(memberId);
+		return pointRepository.save(newPoint);
 	}
 }
