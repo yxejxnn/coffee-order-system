@@ -4,6 +4,8 @@ import com.coffeeorder.domain.member.entity.Member;
 import com.coffeeorder.domain.member.repository.MemberRepository;
 import com.coffeeorder.domain.menu.entity.Menu;
 import com.coffeeorder.domain.menu.repository.MenuRepository;
+import com.coffeeorder.domain.point.entity.Point;
+import com.coffeeorder.domain.point.repository.PointRepository;
 import java.util.List;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -18,20 +20,25 @@ public class DataSeeder implements ApplicationRunner {
 
 	private final MemberRepository memberRepository;
 	private final MenuRepository menuRepository;
+	private final PointRepository pointRepository;
 
-	public DataSeeder(MemberRepository memberRepository, MenuRepository menuRepository) {
+	public DataSeeder(MemberRepository memberRepository, MenuRepository menuRepository, PointRepository pointRepository) {
 		this.memberRepository = memberRepository;
 		this.menuRepository = menuRepository;
+		this.pointRepository = pointRepository;
 	}
 
 	@Override
 	public void run(ApplicationArguments args) {
 		if (memberRepository.count() == 0) {
-			memberRepository.saveAll(List.of(
+			List<Member> members = memberRepository.saveAll(List.of(
 					new Member("홍길동"),
 					new Member("김민준"),
 					new Member("이서연")
 			));
+			pointRepository.saveAll(members.stream()
+					.map(member -> new Point(member.getId()))
+					.toList());
 		}
 
 		if (menuRepository.count() == 0) {
