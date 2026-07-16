@@ -2,6 +2,7 @@ package com.coffeeorder.domain.point.service;
 
 import com.coffeeorder.common.exception.CoffeeOrderException;
 import com.coffeeorder.common.exception.ErrorCode;
+import com.coffeeorder.domain.member.repository.MemberRepository;
 import com.coffeeorder.domain.point.dto.PointChargeResponse;
 import com.coffeeorder.domain.point.entity.Point;
 import com.coffeeorder.domain.point.entity.PointHistory;
@@ -19,6 +20,7 @@ public class PointService {
 
 	private final PointRepository pointRepository;
 	private final PointHistoryRepository pointHistoryRepository;
+	private final MemberRepository memberRepository;
 
 	@Transactional
 	public PointChargeResponse charge(Long memberId, Long amount) {
@@ -26,13 +28,21 @@ public class PointService {
 			throw new CoffeeOrderException(ErrorCode.INVALID_AMOUNT);
 		}
 
-		// POINT는 MEMBER와 1:1이며 시드에서 항상 함께 생성되므로, 락 조회 실패는 곧 회원 미존재를 뜻한다.
 		Point point = pointRepository.findByMemberIdForUpdate(memberId)
-				.orElseThrow(() -> new CoffeeOrderException(ErrorCode.MEMBER_NOT_FOUND));
+				.orElseGet(() -> createPointForExistingMember(memberId));
 
 		point.charge(amount);
 		pointHistoryRepository.save(new PointHistory(memberId, PointHistoryType.CHARGE, amount, null));
 
 		return PointChargeResponse.from(point);
+	}
+
+	// POINT는 시드에서 MEMBER와 함께 생성되지만, 시드 이전에 만들어진 회원 등 그 불변식이 깨진 경우를 대비해
+	// 락 조회가 비었을 때 회원 존재를 별도로 확인하고 없으면 그 자리에서 만든다(회원 존재는 확정된 상태).
+	private Point createPointForExistingMember(Long memberId) {
+		if (!memberRepository.existsById(memberId)) {
+			throw new CoffeeOrderException(ErrorCode.MEMBER_NOT_FOUND);
+		}
+		return pointRepository.save(new Point(memberId));
 	}
 }

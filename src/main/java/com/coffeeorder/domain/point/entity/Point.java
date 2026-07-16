@@ -44,6 +44,6 @@ public class Point {
 	}
 
 	public void charge(Long amount) {
-		this.balance += amount;
+		this.balance = Math.addExact(this.balance, amount);
 	}
 }

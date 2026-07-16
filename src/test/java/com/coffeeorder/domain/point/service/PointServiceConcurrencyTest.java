@@ -51,8 +51,9 @@ class PointServiceConcurrencyTest {
 				}
 			});
 		}
-		latch.await(30, TimeUnit.SECONDS);
+		boolean completedInTime = latch.await(30, TimeUnit.SECONDS);
 		executor.shutdown();
+		assertThat(completedInTime).as("모든 충전 요청이 타임아웃 없이 끝나야 한다").isTrue();
 
 		Point result = pointRepository.findById(pointId).orElseThrow();
 		assertThat(result.getBalance()).isEqualTo(THREAD_COUNT * CHARGE_AMOUNT);
