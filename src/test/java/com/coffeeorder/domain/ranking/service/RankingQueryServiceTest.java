@@ -28,13 +28,11 @@ class RankingQueryServiceTest {
 	private MenuRepository menuRepository;
 
 	private final LocalDate today = LocalDate.now(RankingRedisKeys.RANKING_ZONE);
-	private final List<String> usedKeysAndMenuIds = new ArrayList<>();
+	private final List<Runnable> cleanupTasks = new ArrayList<>();
 
 	@AfterEach
 	void tearDown() {
-		for (int i = 0; i < usedKeysAndMenuIds.size(); i += 2) {
-			redisTemplate.opsForZSet().remove(usedKeysAndMenuIds.get(i), usedKeysAndMenuIds.get(i + 1));
-		}
+		cleanupTasks.forEach(Runnable::run);
 	}
 
 	@Test
@@ -58,8 +56,8 @@ class RankingQueryServiceTest {
 	void getPopularMenus_includesDayMinusSix_excludesDayMinusSeven() {
 		Menu includedMenu = menuRepository.save(new Menu("7일경계-포함", 4500));
 		Menu excludedMenu = menuRepository.save(new Menu("7일경계-제외", 4500));
-		seed(RankingRedisKeys.rankingKey(today.minusDays(6)), includedMenu.getId(), 5.0);
-		seed(RankingRedisKeys.rankingKey(today.minusDays(7)), excludedMenu.getId(), 5.0);
+		seed(RankingRedisKeys.rankingKey(today.minusDays(6)), includedMenu.getId(), 1_000_000.0);
+		seed(RankingRedisKeys.rankingKey(today.minusDays(7)), excludedMenu.getId(), 1_000_000.0);
 
 		List<PopularMenuResponse> result = rankingQueryService.getPopularMenus();
 
@@ -70,7 +68,6 @@ class RankingQueryServiceTest {
 
 	private void seed(String rankingKey, Long menuId, double score) {
 		redisTemplate.opsForZSet().incrementScore(rankingKey, menuId.toString(), score);
-		usedKeysAndMenuIds.add(rankingKey);
-		usedKeysAndMenuIds.add(menuId.toString());
+		cleanupTasks.add(() -> redisTemplate.opsForZSet().remove(rankingKey, menuId.toString()));
 	}
 }

@@ -12,11 +12,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations.TypedTuple;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -37,30 +39,30 @@ public class RankingQueryService {
 			return List.of();
 		}
 
-		List<TypedTuple<String>> top = unioned.stream()
-				.sorted(Comparator.<TypedTuple<String>>comparingDouble(tuple -> tuple.getScore() == null ? 0 : tuple.getScore())
+		List<RankedMenu> top = unioned.stream()
+				.map(tuple -> new RankedMenu(Long.parseLong(tuple.getValue()), tuple.getScore()))
+				.sorted(Comparator.comparingDouble(RankedMenu::score)
 						.reversed()
-						.thenComparing(tuple -> Long.parseLong(tuple.getValue())))
+						.thenComparing(RankedMenu::menuId))
 				.limit(POPULAR_MENU_LIMIT)
 				.toList();
 
-		List<Long> menuIds = top.stream()
-				.map(tuple -> Long.parseLong(tuple.getValue()))
-				.toList();
-		Map<Long, Menu> menuById = menuRepository.findAllById(menuIds).stream()
+		Map<Long, Menu> menuById = menuRepository.findAllById(top.stream().map(RankedMenu::menuId).toList()).stream()
 				.collect(Collectors.toMap(Menu::getId, menu -> menu));
 
 		List<PopularMenuResponse> responses = new ArrayList<>();
 		int rank = 1;
-		for (TypedTuple<String> tuple : top) {
-			Long menuId = Long.parseLong(tuple.getValue());
-			Menu menu = menuById.get(menuId);
-			responses.add(new PopularMenuResponse(
-					rank++,
-					menuId,
-					menu.getName(),
-					tuple.getScore().longValue()));
+		for (RankedMenu rankedMenu : top) {
+			Menu menu = menuById.get(rankedMenu.menuId());
+			if (menu == null) {
+				log.warn("랭킹 데이터에는 있으나 메뉴 조회 실패, 스킵 (menuId={})", rankedMenu.menuId());
+				continue;
+			}
+			responses.add(PopularMenuResponse.from(rank++, menu, rankedMenu.score().longValue()));
 		}
 		return responses;
+	}
+
+	private record RankedMenu(Long menuId, Double score) {
 	}
 }

@@ -107,6 +107,21 @@ class RankingQueryServiceUnitTest {
 						tuple(2L, 2L));
 	}
 
+	@Test
+	void getPopularMenus_skipsRankedMenuId_whenMenuNoLongerExistsInDb() {
+		when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+		when(zSetOperations.unionWithScores(anyString(), anyList())).thenReturn(Set.of(
+				scoreOf(1L, 5.0),
+				scoreOf(2L, 3.0)));
+		when(menuRepository.findAllById(anyIterable())).thenReturn(List.of(menuWithId(1L, "메뉴1")));
+
+		List<PopularMenuResponse> result = service().getPopularMenus();
+
+		assertThat(result)
+				.extracting(PopularMenuResponse::rank, PopularMenuResponse::menuId)
+				.containsExactly(tuple(1, 1L));
+	}
+
 	private TypedTuple<String> scoreOf(Long menuId, double score) {
 		return new DefaultTypedTuple<>(menuId.toString(), score);
 	}
