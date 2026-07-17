@@ -38,7 +38,7 @@ wrapper(`./gradlew`) 사용, 전역 gradle 금지. (Maven이면 교체)
 ./gradlew compileJava  # 컴파일 검증   ./gradlew bootRun  # 앱 실행
 ```
 
-> ⚠️ **`./gradlew test`/`build`는 실제 MySQL이 필요하다** (엔티티/리포지토리 계층부터 `@DataJpaTest`가 임베디드 DB 없이 실제 datasource를 씀). 먼저 `docker compose up -d mysql` 후 `DB_USERNAME`/`DB_PASSWORD`(`.env`의 `MYSQL_ROOT_PASSWORD`)를 셸 환경변수로 export하고 실행한다 — `.env`는 docker compose만 읽으므로 Gradle 프로세스엔 별도로 넘겨야 한다.
+> ⚠️ **`./gradlew test`/`build`는 실제 MySQL·Redis가 필요하다** (엔티티/리포지토리 계층부터 `@DataJpaTest`가 임베디드 DB 없이 실제 datasource를 쓰고, [#7](https://github.com/yxejxnn/coffee-order-system/issues/7)부터 랭킹 집계 테스트가 실제 Redis에 붙는다 — Kafka는 `@EmbeddedKafka`로 대체되므로 별도 기동 불필요). 먼저 `docker compose up -d mysql redis` 후 `DB_USERNAME`/`DB_PASSWORD`(`.env`의 `MYSQL_ROOT_PASSWORD`)를 셸 환경변수로 export하고 실행한다 — `.env`는 docker compose만 읽으므로 Gradle 프로세스엔 별도로 넘겨야 한다.
 
 ## 컨텍스트 라우터
 
