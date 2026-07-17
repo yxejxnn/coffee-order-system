@@ -31,12 +31,13 @@ class RankingAggregationServiceConcurrencyTest {
 	private StringRedisTemplate redisTemplate;
 
 	private final List<String> usedIdempotencyKeys = new CopyOnWriteArrayList<>();
+	private final List<String> usedMenuIds = new CopyOnWriteArrayList<>();
 	private final String rankingKey = RankingRedisKeys.rankingKey(LocalDate.now());
 
 	@AfterEach
 	void tearDown() {
 		usedIdempotencyKeys.forEach(redisTemplate::delete);
-		redisTemplate.delete(rankingKey);
+		usedMenuIds.forEach(menuId -> redisTemplate.opsForZSet().remove(rankingKey, menuId));
 	}
 
 	@Test
@@ -84,6 +85,7 @@ class RankingAggregationServiceConcurrencyTest {
 	private OrderCompletedEvent newEvent(Long menuId) {
 		String orderGroupId = UUID.randomUUID().toString();
 		usedIdempotencyKeys.add(RankingRedisKeys.idempotencyKey(orderGroupId));
+		usedMenuIds.add(menuId.toString());
 		return new OrderCompletedEvent(orderGroupId, 1L, menuId, 4500L);
 	}
 }
