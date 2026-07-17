@@ -129,11 +129,10 @@ docs/
 | **Plan** | **GitHub Issue 생성**(`gh issue create`) + `docs/dev/ongoing/{작업}.md` 생성 (대상·**이슈 #N**·담당·배경·설계·태스크·평가기준·검증레벨) |
 | **게이트 A (계획 승인)** | 이슈 + 계획 + 명세 + ADR을 사용자가 승인 |
 | **Generate → Evaluate 통과 후** | 구현 + **`design.md` 작성/갱신(SSOT, 필수)** — 코드와 같은 작업 단위로, **push 전에** 끝내 둔다 |
-| **Push+PR / 게이트 B** | design.md를 포함해 feature push → PR(base: dev, `Closes #N`) → **Claude 자체 리뷰·수정**(코드뿐 아니라 design.md도 리뷰 대상) → 머지 직전 멈춤 → **사람 최종 검토·merge** (`docs/workflow/issue-pr-guide.md`) |
-| **merge 후** | ① ongoing 문서를 `changes/`로 **파일명 그대로 이동** → ② **feature 브랜치 삭제**(로컬+원격) |
+| **Push+PR / 게이트 B** | design.md를 포함해 feature push → PR(base: dev, `Closes #N`) → **Claude 자체 리뷰·수정**(코드뿐 아니라 design.md도 리뷰 대상) → **ongoing 문서를 `changes/`로 파일명 그대로 이동**(같은 feature 브랜치, 머지 전) → 머지 직전 멈춤 → **사람 최종 검토·merge** (`docs/workflow/issue-pr-guide.md`) |
+| **merge 후** | **feature 브랜치 삭제**(로컬+원격)만 남는다 |
 
-> **design.md는 PR에 포함**한다 — 머지 후로 미루지 않는다. 사람이 게이트 B에서 코드와 문서를 한 번에 검토할 수 있고, 자체 리뷰 단계에서 문서-구현 불일치도 잡힌다.
-> merge 후에는 ongoing→changes 이동만 남는다(design.md는 이미 PR에 있었으므로 별도 작업 없음).
+> **design.md·ongoing→changes 이동 둘 다 PR에 포함**한다 — 머지 후로 미루지 않는다. `main`·`dev`는 직접 커밋·push가 훅으로 막혀 있어서, "머지 후"에 하려고 하면 파일 하나 옮기려고 새 feature 브랜치+PR을 또 만들어야 한다 — 그 오버헤드를 피하려고 게이트 B 이전(같은 PR)에 끝낸다(2026-07-17 사용자 정정: "머지 하면 니 문서 이동하고 또 pr 올릴 거잖아... 작업이 끝났으면 알아서 문서를 옮기라고"). 사람이 게이트 B에서 코드·design.md·changes 이동을 한 번에 검토하고, merge 후에는 브랜치 삭제만 하면 끝난다.
 
 ---
 
@@ -154,5 +153,6 @@ grep -rl "담당: 홍길동" docs/dev/ongoing/       # 특정 담당자의 진�
 
 1. 새 작업(생성/유지보수) → `docs/dev/ongoing/{작업}.md` 생성 (번호 없음, 담당 표기)
 2. 승인 → 개발 → Evaluate 통과 시(push 전): 대상 기능 `design.md` 갱신(SSOT), PR에 포함
-3. PR merge 후: ongoing 문서를 그 기능 `changes/`로 **파일명 그대로 이동**(채번 없음)
-4. 진행 중 현황은 `ls docs/dev/ongoing/`로 한눈에
+3. **머지 전**(같은 feature 브랜치, 자체 리뷰 이후): ongoing 문서를 그 기능 `changes/`로 **파일명 그대로 이동**(채번 없음) → PR에 포함
+4. PR merge 후: **feature 브랜치 삭제**만 남는다
+5. 진행 중 현황은 `ls docs/dev/ongoing/`로 한눈에
