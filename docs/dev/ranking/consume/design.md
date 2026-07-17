@@ -17,9 +17,15 @@
 ## 실패 정책
 멱등 스킵(중복 이벤트)은 실패가 아니라 정상 경로다 — INFO 로그만 남기고 정상 반환, 예외를 던지지 않으므로 Kafka 오프셋은 정상 커밋된다. Redis 자체 장애(연결 실패 등)에 대한 재시도·서킷브레이커는 이 이슈 범위 밖으로 뒀다 — [#6](../../collector/consume/design.md)의 외부 HTTP 전송과 달리 Redis는 애플리케이션과 같은 docker-compose 스택 내부 인프라라 별도 재시도 정책 없이 컨슈머 예외를 그대로 전파하도록 뒀다(Kafka가 오프셋 미커밋으로 자동 재시도). 단, 무한정 블로킹은 막기 위해 `spring.data.redis.timeout`을 3초로 설정했다(collector의 `RestClient` 타임아웃과 같은 취지).
 
-## 알려진 한계 (자체 리뷰에서 발견, 이 이슈 범위 밖으로 남김)
-- **일자 버킷은 소비 시각 기준**: `RankingAggregationService`는 `LocalDate.now(Asia/Seoul)`로 버킷을 정하는데, 이는 주문 시각이 아니라 컨슈머가 그 이벤트를 처리한 시각이다. `OrderCompletedEvent`에 타임스탬프 필드가 없어 주문 시각 기준으로 바꾸려면 이벤트 스키마 변경(및 [#6](../../collector/consume/design.md) 소비자에도 영향)이 필요해 이번 이슈 범위를 넘는다. 컨슈머가 몇 시간 이상 지연되거나 오프셋이 복구 목적으로 리셋돼 자정을 넘겨 재처리되면 그날 버킷이 실제 주문일과 어긋날 수 있다 — 과제/데모 환경에서는 영향이 제한적이라 판단해 보류했다.
-- **멱등 TTL(7일)은 7일보다 오래된 재생(replay)을 막지 못한다**: `ranking-group`의 오프셋을 수동으로 리셋해 과거 데이터를 재처리하면 이미 만료된 멱등 키 때문에 중복 집계될 수 있다. ADR-003은 이런 복구를 Kafka 재생이 아니라 `ORDERS` 테이블 기반 DB 재구축 쿼리로 하도록 이미 설계해뒀으므로(재생이 아닌 재구축 경로), 실무적으로는 이 경로를 타지 않는 것을 전제로 한다.
+## 알려진 한계 (자체 리뷰에서 발견, 재검토 조건 포함)
+PR #28 자체 리뷰(`/code-review --comment`)에서 나온 9건 중 코드로 고친 2건(멱등 마킹 롤백, 테스트 tearDown 파괴적 삭제)을 뺀 나머지를 여기 모은다 — PR 스레드 답글에만 남기면 머지 후 다시 들여다볼 일이 없어 묻히므로, "왜 지금 안 고쳤고 언제 다시 봐야 하는지"를 코드와 함께 남는 문서에 적어둔다.
+
+- **일자 버킷은 소비 시각 기준**: `RankingAggregationService`는 `LocalDate.now(Asia/Seoul)`로 버킷을 정하는데, 이는 주문 시각이 아니라 컨슈머가 그 이벤트를 처리한 시각이다. `OrderCompletedEvent`에 타임스탬프 필드가 없어 주문 시각 기준으로 바꾸려면 이벤트 스키마 변경(및 [#6](../../collector/consume/design.md) 소비자에도 영향)이 필요해 이번 이슈 범위를 넘는다. 컨슈머가 몇 시간 이상 지연되거나 오프셋이 복구 목적으로 리셋돼 자정을 넘겨 재처리되면 그날 버킷이 실제 주문일과 어긋날 수 있다 — 과제/데모 환경에서는 영향이 제한적이라 판단해 보류했다. **재검토 조건**: `OrderCompletedEvent`에 주문 시각 필드를 추가하는 다른 작업이 생기면, 그때 이 버킷 키도 주문 시각 기준으로 같이 바꾼다.
+- **멱등 TTL(7일)은 7일보다 오래된 재생(replay)을 막지 못한다**: `ranking-group`의 오프셋을 수동으로 리셋해 과거 데이터를 재처리하면 이미 만료된 멱등 키 때문에 중복 집계될 수 있다. ADR-003은 이런 복구를 Kafka 재생이 아니라 `ORDERS` 테이블 기반 DB 재구축 쿼리로 하도록 이미 설계해뒀으므로(재생이 아닌 재구축 경로), 실무적으로는 이 경로를 타지 않는 것을 전제로 한다. **재검토 조건**: 실제로 `ranking-group` 오프셋을 수동 리셋해 복구를 시도할 일이 생기면, 그 전에 반드시 DB 재구축 경로를 쓰거나 리셋 전 해당 기간 멱등 키를 미리 채워둔다.
+- **Redis 왕복 3회(setIfAbsent+incrementScore+expire), `expire`는 매 이벤트마다 무조건 재호출**: Lua 스크립트/파이프라인으로 묶으면 왕복도 줄고 위 멱등 마킹의 원자성 잔여 위험(하드 크래시 구간)도 같이 없어지지만, 이 저장소에 Lua 선례가 없어 이번엔 롤백 처리로만 완화했다. **재검토 조건**: 이 프로젝트에서 Lua/파이프라이닝을 다른 곳에서도 쓰게 되거나, 실측 처리량이 문제로 확인되면 그때 도입한다.
+- **`RankingAggregationService.aggregate()`는 예외를 삼키지 않고 그대로 전파**: 랭킹 집계는 collector 전송과 달리 "정확한 카운트"가 요구사항이라, Redis 오류 시 예외를 삼켜 유실시키기보다 Kafka가 오프셋을 커밋하지 않고 재전달하게 두는 쪽이 맞다고 판단해 의도적으로 유지했다(고친 게 아니라 검토 후 그대로 둔 결정). 부작용으로 `order-completed`를 발행하는 다른 `@SpringBootTest`(예: `OrderCompletedEventListenerTest`)도 이제 암묵적으로 Redis 가동을 전제하게 됐는데, `AGENTS.md`가 이미 테스트 전제조건에 Redis를 명시해뒀으므로 받아들일 만한 트레이드오프로 판단했다.
+- **`RankingRedisKeys`가 도메인 루트에 위치**(계층 서브패키지 없음): 계획 단계에서 명시적으로 정하고 승인받은 위치라 유지했다(검토 후 그대로 둔 결정). `KafkaTopics`가 도메인 밖(`config`)에 있는 건 컬렉터·랭킹 두 도메인이 같이 쓰는 상수라서고, `RankingRedisKeys`는 단일 도메인이라 같은 근거는 아니지만, 정적 메서드 2개짜리 클래스를 위해 서브패키지를 새로 만드는 게 오히려 과하다고 판단했다.
+- **`RankingAggregationServiceTest`/`RankingAggregationServiceConcurrencyTest`가 `usedIdempotencyKeys`/`rankingKey`/`tearDown`/`newEvent` 헬퍼(~15줄)를 그대로 중복**: 이 저장소에 아직 공유 테스트 베이스 클래스 관례가 없고 지금은 2곳뿐이라 추출을 보류했다. **재검토 조건**: 3번째로 비슷한 Redis/Kafka 통합 테스트가 생기면 그때 공유 fixture로 추출한다.
 
 ## 관련 코드 위치
 - `com.coffeeorder.domain.ranking.consumer.RankingEventConsumer` — `@KafkaListener`.
