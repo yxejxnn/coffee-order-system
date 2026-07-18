@@ -273,12 +273,14 @@ class MultiInstanceVerificationTest {
 	}
 
 	private static String jdbcUrl() {
-		/* 기본값은 docker-compose가 실제로 매핑하는 포트(3307)에 맞춘다. 앱의 application.yml
-		 * 기본값(3306)을 그대로 쓰면 로컬에 떠 있을 수 있는 무관한 MySQL(.env 주석 참고)에
-		 * 잘못 연결될 위험이 있다 — scripts/verify-multi-instance.sh는 항상 DB_PORT를 export하므로
-		 * 이 기본값은 스크립트 없이 직접 실행할 때만 쓰인다. */
-		return "jdbc:mysql://" + env("DB_HOST", "localhost") + ":" + env("DB_PORT", "3307")
-			+ "/" + env("DB_NAME", "coffee_order") + "?serverTimezone=Asia/Seoul&characterEncoding=UTF-8";
+		/* 이 개발 환경엔 서로 다른 자격증명을 쓰는 MySQL이 두 개 공존한다(도커 3307, 로컬 3306).
+		 * DB_PORT에 기본값을 추측해서 넣으면 IntelliJ의 JUnit 기본 실행 설정처럼 다른 인스턴스용
+		 * 자격증명이 이미 박혀 있는 경우 조용히 엉뚱한 MySQL에 그 자격증명으로 접속을 시도해
+		 * "Access denied"로 혼란스럽게 실패한다 — DB_USERNAME/DB_PASSWORD와 마찬가지로
+		 * DB_HOST/DB_PORT/DB_NAME도 기본값 없이 명시를 요구해 항상 실행자가 어느 MySQL을
+		 * 겨냥하는지 스스로 밝히게 한다. */
+		return "jdbc:mysql://" + env("DB_HOST", null) + ":" + env("DB_PORT", null)
+			+ "/" + env("DB_NAME", null) + "?serverTimezone=Asia/Seoul&characterEncoding=UTF-8";
 	}
 
 	private static String env(String name, String defaultValue) {
@@ -287,7 +289,11 @@ class MultiInstanceVerificationTest {
 			return value;
 		}
 		if (defaultValue == null) {
-			throw new IllegalStateException(name + " 환경변수가 필요하다(앱과 동일 크리덴셜).");
+			throw new IllegalStateException(
+				name + " 환경변수가 필요하다 — 이 개발 환경엔 MySQL이 여러 개 있을 수 있어 기본값을 추측하지 않는다."
+					+ " scripts/verify-multi-instance.sh를 쓰거나, IntelliJ에서 직접 실행할 경우"
+					+ " Run Configuration에 DB_HOST/DB_PORT/DB_NAME/DB_USERNAME/DB_PASSWORD(+REDIS_HOST/REDIS_PORT)를"
+					+ " 검증 대상 인스턴스(docker-compose 기준 DB_PORT=3307)에 맞게 명시하라.");
 		}
 		return defaultValue;
 	}
