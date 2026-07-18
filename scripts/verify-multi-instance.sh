@@ -39,6 +39,11 @@ cleanup() {
 	echo "인스턴스 프로세스 정리..."
 	[ -n "$PID1" ] && kill "$PID1" 2>/dev/null || true
 	[ -n "$PID2" ] && kill "$PID2" 2>/dev/null || true
+	# kill은 신호만 보내고 바로 반환하므로, 종료를 기다리지 않으면 스크립트가 끝난 뒤에도
+	# 포트가 잠시 점유된 채로 남아 바로 이어지는 재실행이 bind 실패로 헷갈리게 실패할 수 있다.
+	[ -n "$PID1" ] && wait "$PID1" 2>/dev/null
+	[ -n "$PID2" ] && wait "$PID2" 2>/dev/null
+	true
 }
 trap cleanup EXIT
 
@@ -64,7 +69,7 @@ docker compose up -d mysql redis kafka
 echo "2) jar 빌드..."
 ./gradlew bootJar -q
 
-JAR_FILE="$(ls build/libs/*.jar | grep -v plain | head -n1)"
+JAR_FILE="$(ls -t build/libs/*.jar | grep -v plain | head -n1)"
 echo "   jar: ${JAR_FILE}"
 
 echo "3) 인스턴스1(port ${PORT1}) 기동..."

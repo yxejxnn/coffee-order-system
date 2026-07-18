@@ -19,15 +19,15 @@
 - **`scripts/verify-multi-instance.sh`**: `.env` 로드 → 인프라 기동 대기 → `bootJar` → 인스턴스 2개 백그라운드 기동(`SERVER_PORT` 다름) → `GET /api/menus` 헬스체크 대기 → `verifyMultiInstance` 실행 → `trap`으로 프로세스 정리. 재현 가능한 검증 오케스트레이션.
 
 ## 관련 결정·질문
-- [`ADR-001`](../../adr/ADR-001-포인트-동시성제어.md) · [`ADR-002`](../../adr/ADR-002-주문이벤트-비동기전달.md) · [`ADR-003`](../../adr/ADR-003-인기메뉴-집계전략.md)
+- [`ADR-001`](../../../../adr/ADR-001-포인트-동시성제어.md) · [`ADR-002`](../../../../adr/ADR-002-주문이벤트-비동기전달.md) · [`ADR-003`](../../../../adr/ADR-003-인기메뉴-집계전략.md)
 - 컨테이너화(Dockerfile) 대신 로컬 JVM 2프로세스로 결정 — 이슈 로드맵의 "compose(인스턴스 2개)" 표현과 다르지만, "다중 인스턴스"의 본질(별도 프로세스 2개가 공유 인프라에 접근)은 동일하게 충족.
 
 ## 태스크
-- [ ] `MultiInstanceVerificationTest` 작성(충전/주문 시나리오)
-- [ ] `build.gradle` 태그 분리 + `verifyMultiInstance` 태스크
-- [ ] `scripts/verify-multi-instance.sh` 작성
-- [ ] 실제 실행으로 Level 5·6 검증(PASS)
-- [ ] `docs/dev/verify/multi-instance/design.md` + `docs/logs/verify/multi-instance/001-verify.md` 기록
+- [x] `MultiInstanceVerificationTest` 작성(충전/주문 시나리오)
+- [x] `build.gradle` 태그 분리 + `verifyMultiInstance` 태스크
+- [x] `scripts/verify-multi-instance.sh` 작성
+- [x] 실제 실행으로 Level 5·6 검증(PASS)
+- [x] `docs/dev/verify/multi-instance/design.md` + `docs/logs/verify/multi-instance/001-verify.md` 기록
 
 ## 평가(통과) 기준
 - 2인스턴스 동시 요청에서 초과 차감 0·카운트 정확 — **Level 5~6**, 검증 로그 `docs/logs/`.

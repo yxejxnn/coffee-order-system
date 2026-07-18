@@ -18,11 +18,11 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
@@ -100,29 +100,11 @@ class MultiInstanceVerificationTest {
 	void charge_concurrentRequestsAcrossTwoInstances_noLostUpdate() throws Exception {
 		long before = readPointBalance(chargeMemberId);
 
-		ExecutorService executor = Executors.newFixedThreadPool(10);
-		CountDownLatch latch = new CountDownLatch(CHARGE_THREAD_COUNT);
-		AtomicInteger successCount = new AtomicInteger();
-		for (int i = 0; i < CHARGE_THREAD_COUNT; i++) {
-			int port = (i % 2 == 0) ? port1 : port2;
-			executor.submit(() -> {
-				try {
-					int status = postJson(port, "/api/points/charge",
-						"{\"memberId\":%d,\"amount\":%d}".formatted(chargeMemberId, CHARGE_AMOUNT));
-					if (status == 200) {
-						successCount.incrementAndGet();
-					}
-				} catch (Exception e) {
-					throw new RuntimeException(e);
-				} finally {
-					latch.countDown();
-				}
-			});
-		}
-		boolean completedInTime = latch.await(30, TimeUnit.SECONDS);
-		executor.shutdown();
-		assertThat(completedInTime).as("모든 충전 요청이 타임아웃 없이 끝나야 한다").isTrue();
-		assertThat(successCount.get()).isEqualTo(CHARGE_THREAD_COUNT);
+		List<Integer> statusCodes = fireConcurrently(CHARGE_THREAD_COUNT,
+			port -> postJson(port, "/api/points/charge",
+				"{\"memberId\":%d,\"amount\":%d}".formatted(chargeMemberId, CHARGE_AMOUNT)));
+		long successCount = statusCodes.stream().filter(status -> status == 200).count();
+		assertThat(successCount).isEqualTo(CHARGE_THREAD_COUNT);
 
 		long after = readPointBalance(chargeMemberId);
 		assertThat(after - before).isEqualTo(CHARGE_THREAD_COUNT * CHARGE_AMOUNT);
@@ -138,34 +120,13 @@ class MultiInstanceVerificationTest {
 		long orderCountBefore = readOrderCount(orderMemberId);
 		double rankingScoreBefore = readRankingScore(menuId);
 
-		ExecutorService executor = Executors.newFixedThreadPool(10);
-		CountDownLatch latch = new CountDownLatch(ORDER_THREAD_COUNT);
-		AtomicInteger successCount = new AtomicInteger();
-		AtomicInteger insufficientCount = new AtomicInteger();
-		for (int i = 0; i < ORDER_THREAD_COUNT; i++) {
-			int port = (i % 2 == 0) ? port1 : port2;
-			executor.submit(() -> {
-				try {
-					int status = postJson(port, "/api/orders",
-						"{\"memberId\":%d,\"menuId\":%d,\"quantity\":1}".formatted(orderMemberId, menuId));
-					if (status == 201) {
-						successCount.incrementAndGet();
-					} else if (status == 409) {
-						insufficientCount.incrementAndGet();
-					}
-				} catch (Exception e) {
-					throw new RuntimeException(e);
-				} finally {
-					latch.countDown();
-				}
-			});
-		}
-		boolean completedInTime = latch.await(30, TimeUnit.SECONDS);
-		executor.shutdown();
-		assertThat(completedInTime).as("모든 주문 요청이 타임아웃 없이 끝나야 한다").isTrue();
-
-		assertThat(successCount.get()).isEqualTo(AFFORDABLE_ORDERS);
-		assertThat(insufficientCount.get()).isEqualTo(ORDER_THREAD_COUNT - AFFORDABLE_ORDERS);
+		List<Integer> statusCodes = fireConcurrently(ORDER_THREAD_COUNT,
+			port -> postJson(port, "/api/orders",
+				"{\"memberId\":%d,\"menuId\":%d,\"quantity\":1}".formatted(orderMemberId, menuId)));
+		long successCount = statusCodes.stream().filter(status -> status == 201).count();
+		long insufficientCount = statusCodes.stream().filter(status -> status == 409).count();
+		assertThat(successCount).isEqualTo(AFFORDABLE_ORDERS);
+		assertThat(insufficientCount).isEqualTo(ORDER_THREAD_COUNT - AFFORDABLE_ORDERS);
 
 		/* balanceBefore는 이미 사전 충전분을 포함한 값이므로, 정확히 소진됐다면
 		 * 델타는 0이 아니라 "감당 가능 개수만큼만 깎였다"(-menuPrice*AFFORDABLE_ORDERS)여야 한다.
@@ -181,6 +142,40 @@ class MultiInstanceVerificationTest {
 		/* Kafka 컨슈머 랙만큼 랭킹 반영이 늦을 수 있어 목표치에 도달할 때까지 짧게 폴링한다. */
 		double rankingScoreAfter = pollRankingScoreUntil(menuId, rankingScoreBefore + AFFORDABLE_ORDERS);
 		assertThat(rankingScoreAfter - rankingScoreBefore).isEqualTo((double) AFFORDABLE_ORDERS);
+	}
+
+	/**
+	 * {@code threadCount}건을 인스턴스 포트에 번갈아 나눠 동시에 발사하고 각 응답 상태코드를 모은다.
+	 * 요청 처리 중 예외는 {@code executor.submit()}의 Future가 버려지면 조용히 사라지므로
+	 * 직접 수집해 어서션으로 드러낸다(실패 원인이 카운트 불일치로만 뭉개지지 않도록).
+	 */
+	private static List<Integer> fireConcurrently(int threadCount, ThrowingIntFunction request) throws InterruptedException {
+		ExecutorService executor = Executors.newFixedThreadPool(10);
+		CountDownLatch latch = new CountDownLatch(threadCount);
+		List<Integer> statusCodes = new CopyOnWriteArrayList<>();
+		List<Exception> failures = new CopyOnWriteArrayList<>();
+		for (int i = 0; i < threadCount; i++) {
+			int port = (i % 2 == 0) ? port1 : port2;
+			executor.submit(() -> {
+				try {
+					statusCodes.add(request.apply(port));
+				} catch (Exception e) {
+					failures.add(e);
+				} finally {
+					latch.countDown();
+				}
+			});
+		}
+		boolean completedInTime = latch.await(30, TimeUnit.SECONDS);
+		executor.shutdown();
+		assertThat(completedInTime).as("모든 요청이 타임아웃 없이 끝나야 한다").isTrue();
+		assertThat(failures).as("요청 처리 중 예외가 없어야 한다").isEmpty();
+		return statusCodes;
+	}
+
+	@FunctionalInterface
+	private interface ThrowingIntFunction {
+		int apply(int port) throws Exception;
 	}
 
 	private static void waitUntilReady() throws InterruptedException {
@@ -236,7 +231,7 @@ class MultiInstanceVerificationTest {
 		try (PreparedStatement statement = dbConnection.prepareStatement("SELECT balance FROM points WHERE member_id = ?")) {
 			statement.setLong(1, memberId);
 			try (ResultSet resultSet = statement.executeQuery()) {
-				resultSet.next();
+				assertThat(resultSet.next()).as("member_id=" + memberId + "의 points 행이 있어야 한다").isTrue();
 				return resultSet.getLong("balance");
 			}
 		}
@@ -270,7 +265,11 @@ class MultiInstanceVerificationTest {
 	}
 
 	private static String jdbcUrl() {
-		return "jdbc:mysql://" + env("DB_HOST", "localhost") + ":" + env("DB_PORT", "3306")
+		/* 기본값은 docker-compose가 실제로 매핑하는 포트(3307)에 맞춘다. 앱의 application.yml
+		 * 기본값(3306)을 그대로 쓰면 로컬에 떠 있을 수 있는 무관한 MySQL(.env 주석 참고)에
+		 * 잘못 연결될 위험이 있다 — scripts/verify-multi-instance.sh는 항상 DB_PORT를 export하므로
+		 * 이 기본값은 스크립트 없이 직접 실행할 때만 쓰인다. */
+		return "jdbc:mysql://" + env("DB_HOST", "localhost") + ":" + env("DB_PORT", "3307")
 			+ "/" + env("DB_NAME", "coffee_order") + "?serverTimezone=Asia/Seoul&characterEncoding=UTF-8";
 	}
 
