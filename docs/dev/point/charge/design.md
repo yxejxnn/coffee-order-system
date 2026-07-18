@@ -11,6 +11,7 @@
 ## 데이터 모델
 - `points.balance`를 증가시키고(`Math.addExact`로 오버플로우 시 예외 — 조용한 wrap 방지), 같은 트랜잭션에서 `point_histories`에 `CHARGE` 이력 1건을 남긴다(`order_group_id`는 null). 상세 스펙: `docs/db/point.md`, `docs/db/point-history.md`.
 - `PointRepository`에 별도로 `findByMemberIdForUpdate(memberId)`가 있다 — `@Lock(PESSIMISTIC_WRITE)` + `SELECT ... FOR UPDATE`. 회원마다 `Point`가 항상 1행 존재하는 게 정상 경로(아래 참고)이지만, 그 조회가 비었다고 곧바로 회원 미존재로 단정하지 않는다 — `MemberRepository#existsById`로 실제 회원 존재를 확인한다(회원은 있는데 `Point`만 없는 불변식 파손 상태를 실제 `MEMBER_NOT_FOUND`와 구분하기 위함, 자체 리뷰에서 발견).
+- **`PointService#getBalance(memberId)`(#37에서 추가)**: 잠금 없는 단순 잔액 조회. 결제(`charge`/`use`)에는 절대 쓰지 않고(반드시 `getLockedPoint`의 비관적 락을 거쳐야 함), order/create(#5)의 멱등 재조회 응답처럼 이미 결제가 끝난 뒤 참고용으로만 잔액이 필요할 때 쓴다. 내부적으로 `PointRepository#findByMemberId`(신규, 비잠금 단순 조회)를 사용.
 
 ## 규칙 / 검증
 - 동시성 제어는 `POINT` 행 비관적 락으로 한다. 근거: `docs/policy/point.md`, [ADR-001](../../../adr/ADR-001-포인트-동시성제어.md).
