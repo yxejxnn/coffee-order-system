@@ -6,6 +6,11 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      # Point 최초 생성(REQUIRES_NEW, PointBootstrapService)은 같은 스레드가 순간적으로 커넥션 2개를
+      # 동시에 쥔다(바깥 트랜잭션 보류분 + 중첩 트랜잭션분). 기본값(10)이면 동시 요청이 몰릴 때 이
+      # 드문 경로만으로도 풀이 고갈될 수 있어 여유를 둔다.
+      maximum-pool-size: 20
   jpa:
     hibernate:
       ddl-auto: update
