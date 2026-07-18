@@ -127,6 +127,9 @@ class RankingQueryServiceUnitTest {
 	}
 
 	private Menu menuWithId(Long id, String name) {
+		// Menu.id는 @GeneratedValue라 DB에 저장해야만 채워진다. 이 클래스는 순수 Mockito
+		// 유닛 테스트라 DB 없이 menuById 조인 로직(Menu::getId 기준 매핑)을 검증하려면
+		// id를 직접 주입할 수밖에 없다.
 		Menu menu = new Menu(name, 1000);
 		ReflectionTestUtils.setField(menu, "id", id);
 		return menu;
