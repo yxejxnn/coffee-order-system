@@ -57,7 +57,7 @@ Evaluate를 통과하면 바로 "완료"가 아니다:
 0. **push 전에** 대상 기능의 **`design.md`를 최종 상태로 갱신**(SSOT) — 코드와 같은 작업 단위, PR에 포함시킨다(`docs/dev-doc-guide.md`).
 1. feature 브랜치를 **push하고 PR을 연다**(base: `dev`, `Closes #N`). 세부: `docs/workflow/issue-pr-guide.md`.
 2. **Claude가 `/code-review --comment`로 PR을 자체 리뷰**해 발견사항을 **실제 PR 코멘트로 남기고**, 엔지니어링 판단 범위는 Claude가 직접 결론 내(고치거나 안 고치기로 확정) **수정 → push → 재리뷰 → resolve**한다(design.md도 리뷰 대상). PR 코멘트에 "사람 검토 필요"라고 남겨두고 넘어가지 않는다 — 정말 사람 판단이 필요한 항목만 그 자리에서 `AskUserQuestion`으로 직접 묻는다(`CLAUDE.md`). 이 검토+수정 라운드는 **최대 2회**.
-3. **같은 feature 브랜치에서, 머지 전에** ongoing 문서를 해당 기능 **`changes/`로 파일명 그대로 이동**(채번 없음, `docs/dev-doc-guide.md`)하고 push한다 — `main`·`dev` 직접 커밋이 훅으로 막혀 있어 "merge 후"에 하면 파일 하나 옮기려고 새 PR을 또 열어야 하므로, 게이트 B 이전에 끝낸다.
+3. **같은 feature 브랜치에서, 머지 전에** ongoing 문서를 전역 **`docs/dev/changes/`로 파일명 그대로 이동**(채번 없음, 기능별 폴더로 나누지 않음, `docs/dev-doc-guide.md`)하고 push한다 — `main`·`dev` 직접 커밋이 훅으로 막혀 있어 "merge 후"에 하면 파일 하나 옮기려고 새 PR을 또 열어야 하므로, 게이트 B 이전에 끝낸다.
 4. **머지 직전에 멈춰** 사람의 최종 검토를 기다린다. **merge는 사람만.**
 5. 사람이 **merge한 뒤**:
    - 사용한 **feature 브랜치를 삭제**(로컬+원격).
