@@ -8,6 +8,8 @@ import com.coffeeorder.domain.point.entity.Point;
 import com.coffeeorder.domain.point.entity.PointHistory;
 import com.coffeeorder.domain.point.repository.PointHistoryRepository;
 import com.coffeeorder.domain.point.repository.PointRepository;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -71,7 +73,7 @@ class PointServiceConcurrencyTest {
 
 		ExecutorService executor = Executors.newFixedThreadPool(10);
 		CountDownLatch latch = new CountDownLatch(THREAD_COUNT);
-		List<Throwable> failures = java.util.Collections.synchronizedList(new java.util.ArrayList<>());
+		List<Throwable> failures = Collections.synchronizedList(new ArrayList<>());
 		for (int i = 0; i < THREAD_COUNT; i++) {
 			executor.submit(() -> {
 				try {

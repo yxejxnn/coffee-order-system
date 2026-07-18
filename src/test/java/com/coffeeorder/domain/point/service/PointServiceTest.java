@@ -41,6 +41,7 @@ class PointServiceTest {
 	void charge_increasesBalanceAndRecordsHistory_whenValid() {
 		Point point = new Point(1L);
 		point.charge(5000L);
+		when(pointRepository.existsByMemberId(1L)).thenReturn(true);
 		when(pointRepository.findByMemberIdForUpdate(1L)).thenReturn(Optional.of(point));
 
 		PointChargeResponse response = new PointService(pointRepository, pointHistoryRepository, memberRepository, pointBootstrapService).charge(1L, 3000L);
@@ -62,7 +63,7 @@ class PointServiceTest {
 				.isInstanceOf(CoffeeOrderException.class)
 				.extracting("errorCode")
 				.isEqualTo(ErrorCode.INVALID_AMOUNT);
-		verify(pointRepository, never()).findByMemberIdForUpdate(any());
+		verify(pointRepository, never()).existsByMemberId(any());
 	}
 
 	@Test
@@ -77,7 +78,7 @@ class PointServiceTest {
 
 	@Test
 	void charge_throwsMemberNotFound_whenPointRowMissingAndMemberDoesNotExist() {
-		when(pointRepository.findByMemberIdForUpdate(999L)).thenReturn(Optional.empty());
+		when(pointRepository.existsByMemberId(999L)).thenReturn(false);
 		when(memberRepository.existsById(999L)).thenReturn(false);
 		PointService pointService = new PointService(pointRepository, pointHistoryRepository, memberRepository, pointBootstrapService);
 
@@ -85,13 +86,14 @@ class PointServiceTest {
 				.isInstanceOf(CoffeeOrderException.class)
 				.extracting("errorCode")
 				.isEqualTo(ErrorCode.MEMBER_NOT_FOUND);
+		verify(pointRepository, never()).findByMemberIdForUpdate(any());
 	}
 
 	@Test
 	void charge_createsPointAndSucceeds_whenPointRowMissingButMemberExists() {
-		when(pointRepository.findByMemberIdForUpdate(7L))
-				.thenReturn(Optional.empty(), Optional.of(new Point(7L)));
+		when(pointRepository.existsByMemberId(7L)).thenReturn(false);
 		when(memberRepository.existsById(7L)).thenReturn(true);
+		when(pointRepository.findByMemberIdForUpdate(7L)).thenReturn(Optional.of(new Point(7L)));
 		PointService pointService = new PointService(pointRepository, pointHistoryRepository, memberRepository, pointBootstrapService);
 
 		PointChargeResponse response = pointService.charge(7L, 3000L);
@@ -105,6 +107,7 @@ class PointServiceTest {
 	void use_decreasesBalanceAndRecordsHistory_whenValid() {
 		Point point = new Point(1L);
 		point.charge(10000L);
+		when(pointRepository.existsByMemberId(1L)).thenReturn(true);
 		when(pointRepository.findByMemberIdForUpdate(1L)).thenReturn(Optional.of(point));
 
 		Point result = new PointService(pointRepository, pointHistoryRepository, memberRepository, pointBootstrapService).use(1L, 4500L, "group-1");
@@ -117,6 +120,7 @@ class PointServiceTest {
 	void use_throwsInsufficientPoint_whenBalanceIsLessThanAmount() {
 		Point point = new Point(1L);
 		point.charge(1000L);
+		when(pointRepository.existsByMemberId(1L)).thenReturn(true);
 		when(pointRepository.findByMemberIdForUpdate(1L)).thenReturn(Optional.of(point));
 		PointService pointService = new PointService(pointRepository, pointHistoryRepository, memberRepository, pointBootstrapService);
 
@@ -139,14 +143,14 @@ class PointServiceTest {
 				.isInstanceOf(CoffeeOrderException.class)
 				.extracting("errorCode")
 				.isEqualTo(ErrorCode.INVALID_AMOUNT);
-		verify(pointRepository, never()).findByMemberIdForUpdate(any());
+		verify(pointRepository, never()).existsByMemberId(any());
 	}
 
 	@Test
 	void use_createsPointAndThrowsInsufficientPoint_whenPointRowMissingButMemberExists() {
-		when(pointRepository.findByMemberIdForUpdate(7L))
-				.thenReturn(Optional.empty(), Optional.of(new Point(7L)));
+		when(pointRepository.existsByMemberId(7L)).thenReturn(false);
 		when(memberRepository.existsById(7L)).thenReturn(true);
+		when(pointRepository.findByMemberIdForUpdate(7L)).thenReturn(Optional.of(new Point(7L)));
 		PointService pointService = new PointService(pointRepository, pointHistoryRepository, memberRepository, pointBootstrapService);
 
 		assertThatThrownBy(() -> pointService.use(7L, 4500L, "group-1"))
