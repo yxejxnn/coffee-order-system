@@ -20,6 +20,7 @@
 - **DataSeeder 시드 경쟁의 잔여 위험**: `DataSeeder`는 `count() == 0`일 때만 시드하는 존재 검증 없는 조건이라, 두 인스턴스가 완전히 동시에 기동하면 이론상 둘 다 빈 테이블을 보고 중복 시드를 시도할 수 있다. `scripts/verify-multi-instance.sh`는 인스턴스1이 시딩까지 마친 뒤(헬스체크가 메뉴 데이터 존재까지 확인) 인스턴스2를 띄워 이 경쟁을 완화하지만 완전히 배제하지는 않는다 — DataSeeder 자체 수정(예: 존재 검증 강화)은 이 이슈(#9)의 범위를 벗어나 손대지 않았다.
 - 검증 레벨: **Level 5**(로컬 2인스턴스 실기동) · **Level 6**(실제 HTTP, 두 시나리오 모두) PASS. 상세 근거는 `docs/logs/verify/multi-instance/001-verify.md`.
 - 기본 `./gradlew test`에는 `MultiInstanceVerificationTest`를 포함하지 않는다(2프로세스가 실제로 떠 있어야만 통과하는 전제가 있어 일반 빌드/CI를 깨뜨리면 안 됨) — `build.gradle`의 `excludeTags 'multi-instance'` + 전용 `verifyMultiInstance` 태스크로 분리했다.
+- **`excludeTags`는 Gradle `test` 태스크에만 적용되는 설정**이라, IntelliJ 등 IDE 네이티브 JUnit 러너로 돌리면 이 제외를 모르고 그냥 실행한다. 이 경우 사전조건(2인스턴스 기동) 미충족을 예외(`FAILED`)가 아니라 `Assumptions.assumeTrue`(`ABORTED`)로 알리도록 `waitUntilReady()`를 작성했다 — 이건 JUnit Platform 표준 동작이라 러너와 무관하게 "실패"가 아니라 "스킵됨"으로 정확히 표시된다.
 
 ## 관련 문서
 - [`ADR-001`](../../../adr/ADR-001-포인트-동시성제어.md) · [`ADR-002`](../../../adr/ADR-002-주문이벤트-비동기전달.md) · [`ADR-003`](../../../adr/ADR-003-인기메뉴-집계전략.md) — 이 검증이 종합적으로 증명하는 대상.
