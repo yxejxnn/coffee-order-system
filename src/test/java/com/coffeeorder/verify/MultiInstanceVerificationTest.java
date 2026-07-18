@@ -1,0 +1,300 @@
+package com.coffeeorder.verify;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import com.coffeeorder.domain.ranking.RankingRedisKeys;
+import io.lettuce.core.RedisClient;
+import io.lettuce.core.api.StatefulRedisConnection;
+import io.lettuce.core.api.sync.RedisCommands;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.time.Duration;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+
+/**
+ * 이슈 #9 — 이미 떠 있는 두 개의 앱 인스턴스(같은 MySQL/Redis 공유)를 실제 HTTP로 두들겨
+ * 동시성·데이터 일관성을 외부에서 관찰하는 검증. 같은 JVM 안에서 서비스 메서드를 직접
+ * 호출하는 {@code *ConcurrencyTest}들과 달리, 서로 다른 프로세스 두 개가 실제로 존재한다는
+ * 전제를 검증하므로 기본 {@code ./gradlew test}에서 제외하고 {@code verifyMultiInstance}
+ * 태스크로만 실행한다({@code scripts/verify-multi-instance.sh} 참고).
+ */
+@Tag("multi-instance")
+class MultiInstanceVerificationTest {
+
+	private static final int CHARGE_THREAD_COUNT = 20;
+	private static final long CHARGE_AMOUNT = 1000L;
+	private static final int ORDER_THREAD_COUNT = 15;
+	private static final int AFFORDABLE_ORDERS = 5;
+	private static final Duration READY_TIMEOUT = Duration.ofSeconds(30);
+	private static final Duration RANKING_POLL_TIMEOUT = Duration.ofSeconds(10);
+
+	private static HttpClient httpClient;
+	private static Connection dbConnection;
+	private static RedisClient redisClient;
+	private static StatefulRedisConnection<String, String> redisConnection;
+
+	private static int port1;
+	private static int port2;
+	private static Long chargeMemberId;
+	private static Long orderMemberId;
+	private static Long menuId;
+	private static long menuPrice;
+
+	@BeforeAll
+	static void setUp() throws Exception {
+		port1 = Integer.parseInt(System.getProperty("instance1.port", "8080"));
+		port2 = Integer.parseInt(System.getProperty("instance2.port", "8081"));
+		httpClient = HttpClient.newHttpClient();
+		dbConnection = DriverManager.getConnection(jdbcUrl(), env("DB_USERNAME", null), env("DB_PASSWORD", null));
+		redisClient = RedisClient.create("redis://" + env("REDIS_HOST", "localhost") + ":" + env("REDIS_PORT", "6379"));
+		redisConnection = redisClient.connect();
+
+		waitUntilReady();
+
+		List<Long> memberIds = readMemberIds();
+		assertThat(memberIds)
+			.as("시드 회원이 2명 이상 있어야 한다 (DataSeeder가 앱 기동 시 심음)")
+			.hasSizeGreaterThanOrEqualTo(2);
+		chargeMemberId = memberIds.get(0);
+		orderMemberId = memberIds.get(1);
+
+		try (PreparedStatement statement = dbConnection.prepareStatement("SELECT id, price FROM menus ORDER BY id LIMIT 1");
+			 ResultSet resultSet = statement.executeQuery()) {
+			assertThat(resultSet.next()).as("시드 메뉴가 있어야 한다").isTrue();
+			menuId = resultSet.getLong("id");
+			menuPrice = resultSet.getLong("price");
+		}
+	}
+
+	@AfterAll
+	static void tearDown() throws Exception {
+		if (redisConnection != null) {
+			redisConnection.close();
+		}
+		if (redisClient != null) {
+			redisClient.shutdown();
+		}
+		if (dbConnection != null) {
+			dbConnection.close();
+		}
+	}
+
+	@Test
+	void charge_concurrentRequestsAcrossTwoInstances_noLostUpdate() throws Exception {
+		long before = readPointBalance(chargeMemberId);
+
+		List<Integer> statusCodes = fireConcurrently(CHARGE_THREAD_COUNT,
+			port -> postJson(port, "/api/points/charge",
+				"{\"memberId\":%d,\"amount\":%d}".formatted(chargeMemberId, CHARGE_AMOUNT)));
+		long successCount = statusCodes.stream().filter(status -> status == 200).count();
+		assertThat(successCount).isEqualTo(CHARGE_THREAD_COUNT);
+
+		long after = readPointBalance(chargeMemberId);
+		assertThat(after - before).isEqualTo(CHARGE_THREAD_COUNT * CHARGE_AMOUNT);
+	}
+
+	@Test
+	void order_concurrentRequestsAcrossTwoInstances_noOversellAndAccurateRanking() throws Exception {
+		int chargeStatus = postJson(port1, "/api/points/charge",
+			"{\"memberId\":%d,\"amount\":%d}".formatted(orderMemberId, menuPrice * AFFORDABLE_ORDERS));
+		assertThat(chargeStatus).as("사전 충전이 성공해야 한다").isEqualTo(200);
+
+		long balanceBefore = readPointBalance(orderMemberId);
+		long orderCountBefore = readOrderCount(orderMemberId);
+		double rankingScoreBefore = readRankingScore(menuId);
+
+		List<Integer> statusCodes = fireConcurrently(ORDER_THREAD_COUNT,
+			port -> postJson(port, "/api/orders",
+				"{\"memberId\":%d,\"menuId\":%d,\"quantity\":1}".formatted(orderMemberId, menuId)));
+		long successCount = statusCodes.stream().filter(status -> status == 201).count();
+		long insufficientCount = statusCodes.stream().filter(status -> status == 409).count();
+		assertThat(successCount).isEqualTo(AFFORDABLE_ORDERS);
+		assertThat(insufficientCount).isEqualTo(ORDER_THREAD_COUNT - AFFORDABLE_ORDERS);
+
+		/* balanceBefore는 이미 사전 충전분을 포함한 값이므로, 정확히 소진됐다면
+		 * 델타는 0이 아니라 "감당 가능 개수만큼만 깎였다"(-menuPrice*AFFORDABLE_ORDERS)여야 한다.
+		 * 델타가 그보다 더 크게(초과차감) 또는 작게(lost update로 일부만 반영) 나오면 안 된다. */
+		long balanceAfter = readPointBalance(orderMemberId);
+		assertThat(balanceAfter - balanceBefore)
+			.as("정확히 감당 가능한 만큼만 소진되어야 한다(초과차감·lost update 없음)")
+			.isEqualTo(-(menuPrice * AFFORDABLE_ORDERS));
+
+		long orderCountAfter = readOrderCount(orderMemberId);
+		assertThat(orderCountAfter - orderCountBefore).isEqualTo(AFFORDABLE_ORDERS);
+
+		/* Kafka 컨슈머 랙만큼 랭킹 반영이 늦을 수 있어 목표치에 도달할 때까지 짧게 폴링한다. */
+		double rankingScoreAfter = pollRankingScoreUntil(menuId, rankingScoreBefore + AFFORDABLE_ORDERS);
+		assertThat(rankingScoreAfter - rankingScoreBefore).isEqualTo((double) AFFORDABLE_ORDERS);
+	}
+
+	/**
+	 * {@code threadCount}건을 인스턴스 포트에 번갈아 나눠 동시에 발사하고 각 응답 상태코드를 모은다.
+	 * 요청 처리 중 예외는 {@code executor.submit()}의 Future가 버려지면 조용히 사라지므로
+	 * 직접 수집해 어서션으로 드러낸다(실패 원인이 카운트 불일치로만 뭉개지지 않도록).
+	 */
+	private static List<Integer> fireConcurrently(int threadCount, ThrowingIntFunction request) throws InterruptedException {
+		ExecutorService executor = Executors.newFixedThreadPool(10);
+		CountDownLatch latch = new CountDownLatch(threadCount);
+		List<Integer> statusCodes = new CopyOnWriteArrayList<>();
+		List<Exception> failures = new CopyOnWriteArrayList<>();
+		for (int i = 0; i < threadCount; i++) {
+			int port = (i % 2 == 0) ? port1 : port2;
+			executor.submit(() -> {
+				try {
+					statusCodes.add(request.apply(port));
+				} catch (Exception e) {
+					failures.add(e);
+				} finally {
+					latch.countDown();
+				}
+			});
+		}
+		boolean completedInTime = latch.await(30, TimeUnit.SECONDS);
+		executor.shutdown();
+		assertThat(completedInTime).as("모든 요청이 타임아웃 없이 끝나야 한다").isTrue();
+		assertThat(failures).as("요청 처리 중 예외가 없어야 한다").isEmpty();
+		return statusCodes;
+	}
+
+	@FunctionalInterface
+	private interface ThrowingIntFunction {
+		int apply(int port) throws Exception;
+	}
+
+	/*
+	 * excludeTags 'multi-instance'(build.gradle)는 Gradle test 태스크에만 적용된다.
+	 * IntelliJ 등 IDE 네이티브 JUnit 러너로 돌리면 이 제외를 모르고 그냥 실행하므로,
+	 * 사전조건(2인스턴스 기동) 미충족을 예외(=FAILED)가 아니라 Assumptions(=ABORTED/스킵)로
+	 * 알려야 어떤 러너에서 실행하든 "테스트가 깨졌다"가 아니라 "전제조건 미충족으로 건너뜀"으로
+	 * 정확히 표시된다.
+	 */
+	private static void waitUntilReady() throws InterruptedException {
+		long deadline = System.currentTimeMillis() + READY_TIMEOUT.toMillis();
+		while (System.currentTimeMillis() < deadline) {
+			if (isReady(port1) && isReady(port2) && readMemberIds().size() >= 2) {
+				return;
+			}
+			Thread.sleep(500);
+		}
+		Assumptions.assumeTrue(false,
+			"두 인스턴스가 준비되지 않아 스킵한다. scripts/verify-multi-instance.sh로 SERVER_PORT=" + port1 + "/" + port2
+				+ " 두 인스턴스를 먼저 기동했는지 확인하라.");
+	}
+
+	private static boolean isReady(int port) {
+		try {
+			return httpGet(port, "/api/menus") == 200;
+		} catch (Exception e) {
+			return false;
+		}
+	}
+
+	private static int httpGet(int port, String path) throws Exception {
+		HttpRequest request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
+			.GET()
+			.build();
+		return httpClient.send(request, HttpResponse.BodyHandlers.discarding()).statusCode();
+	}
+
+	private static int postJson(int port, String path, String body) throws Exception {
+		HttpRequest request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
+			.header("Content-Type", "application/json")
+			.POST(HttpRequest.BodyPublishers.ofString(body))
+			.build();
+		return httpClient.send(request, HttpResponse.BodyHandlers.discarding()).statusCode();
+	}
+
+	private static List<Long> readMemberIds() {
+		List<Long> ids = new ArrayList<>();
+		try (PreparedStatement statement = dbConnection.prepareStatement("SELECT id FROM members ORDER BY id LIMIT 2");
+			 ResultSet resultSet = statement.executeQuery()) {
+			while (resultSet.next()) {
+				ids.add(resultSet.getLong("id"));
+			}
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+		return ids;
+	}
+
+	private static long readPointBalance(Long memberId) throws Exception {
+		try (PreparedStatement statement = dbConnection.prepareStatement("SELECT balance FROM points WHERE member_id = ?")) {
+			statement.setLong(1, memberId);
+			try (ResultSet resultSet = statement.executeQuery()) {
+				assertThat(resultSet.next()).as("member_id=" + memberId + "의 points 행이 있어야 한다").isTrue();
+				return resultSet.getLong("balance");
+			}
+		}
+	}
+
+	private static long readOrderCount(Long memberId) throws Exception {
+		try (PreparedStatement statement = dbConnection.prepareStatement("SELECT COUNT(*) FROM orders WHERE member_id = ?")) {
+			statement.setLong(1, memberId);
+			try (ResultSet resultSet = statement.executeQuery()) {
+				resultSet.next();
+				return resultSet.getLong(1);
+			}
+		}
+	}
+
+	private static double readRankingScore(Long menuId) {
+		RedisCommands<String, String> commands = redisConnection.sync();
+		String key = RankingRedisKeys.rankingKey(LocalDate.now(RankingRedisKeys.RANKING_ZONE));
+		Double score = commands.zscore(key, menuId.toString());
+		return score == null ? 0.0 : score;
+	}
+
+	private static double pollRankingScoreUntil(Long menuId, double target) throws InterruptedException {
+		long deadline = System.currentTimeMillis() + RANKING_POLL_TIMEOUT.toMillis();
+		double score = readRankingScore(menuId);
+		while (score < target && System.currentTimeMillis() < deadline) {
+			Thread.sleep(300);
+			score = readRankingScore(menuId);
+		}
+		return score;
+	}
+
+	private static String jdbcUrl() {
+		/* 이 개발 환경엔 서로 다른 자격증명을 쓰는 MySQL이 두 개 공존한다(도커 3307, 로컬 3306).
+		 * DB_PORT에 기본값을 추측해서 넣으면 IntelliJ의 JUnit 기본 실행 설정처럼 다른 인스턴스용
+		 * 자격증명이 이미 박혀 있는 경우 조용히 엉뚱한 MySQL에 그 자격증명으로 접속을 시도해
+		 * "Access denied"로 혼란스럽게 실패한다 — DB_USERNAME/DB_PASSWORD와 마찬가지로
+		 * DB_HOST/DB_PORT/DB_NAME도 기본값 없이 명시를 요구해 항상 실행자가 어느 MySQL을
+		 * 겨냥하는지 스스로 밝히게 한다. */
+		return "jdbc:mysql://" + env("DB_HOST", null) + ":" + env("DB_PORT", null)
+			+ "/" + env("DB_NAME", null) + "?serverTimezone=Asia/Seoul&characterEncoding=UTF-8";
+	}
+
+	private static String env(String name, String defaultValue) {
+		String value = System.getenv(name);
+		if (value != null) {
+			return value;
+		}
+		if (defaultValue == null) {
+			throw new IllegalStateException(
+				name + " 환경변수가 필요하다 — 이 개발 환경엔 MySQL이 여러 개 있을 수 있어 기본값을 추측하지 않는다."
+					+ " scripts/verify-multi-instance.sh를 쓰거나, IntelliJ에서 직접 실행할 경우"
+					+ " Run Configuration에 DB_HOST/DB_PORT/DB_NAME/DB_USERNAME/DB_PASSWORD(+REDIS_HOST/REDIS_PORT)를"
+					+ " 검증 대상 인스턴스(docker-compose 기준 DB_PORT=3307)에 맞게 명시하라.");
+		}
+		return defaultValue;
+	}
+}
