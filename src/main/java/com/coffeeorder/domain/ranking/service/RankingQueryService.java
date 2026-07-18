@@ -55,9 +55,11 @@ public class RankingQueryService {
 		for (RankedMenu rankedMenu : top) {
 			Menu menu = menuById.get(rankedMenu.menuId());
 			if (menu == null) {
-				// 랭킹 버킷 TTL(8일)이 조회 윈도우(7일)보다 길고, Redis(랭킹)와 MySQL(메뉴)이
-				// 서로 독립적으로 진화하는 저장소라 메뉴가 DB에서 사라진 뒤에도 최대 7일간
-				// 랭킹에 남아있을 수 있다. 죽이지 않고 스킵해 나머지 응답은 정상 반환한다.
+				/*
+				 * 랭킹 버킷 TTL(8일)이 조회 윈도우(7일)보다 길고, Redis(랭킹)와 MySQL(메뉴)이
+				 * 서로 독립적으로 진화하는 저장소라 메뉴가 DB에서 사라진 뒤에도 최대 7일간
+				 * 랭킹에 남아있을 수 있다. 죽이지 않고 스킵해 나머지 응답은 정상 반환한다.
+				 */
 				log.warn("랭킹 데이터에는 있으나 메뉴 조회 실패, 스킵 (menuId={})", rankedMenu.menuId());
 				continue;
 			}
