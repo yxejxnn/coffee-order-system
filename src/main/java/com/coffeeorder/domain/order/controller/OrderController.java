@@ -19,11 +19,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class OrderController {
 
+	private static final String IDEMPOTENCY_KEY_HEADER = "Idempotency-Key";
+
 	private final OrderService orderService;
 
 	@PostMapping
 	public ResponseEntity<ApiResponse<OrderCreateResponse>> create(
-			@RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+			@RequestHeader(value = IDEMPOTENCY_KEY_HEADER, required = false) String idempotencyKey,
 			@Valid @RequestBody OrderCreateRequest request) {
 		OrderCreateResponse response = orderService.create(
 				request.memberId(), request.menuId(), request.quantity(), idempotencyKey);

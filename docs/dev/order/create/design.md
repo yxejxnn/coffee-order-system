@@ -6,7 +6,9 @@
 ## API / 인터페이스
 - `POST /api/orders` — 상세 계약(요청/응답/에러 코드)은 `docs/api/order.md` 참조.
 - 구현: `domain/order/controller/OrderController` → `domain/order/service/OrderService#create` → (포인트 차감은 `domain/point/service/PointService#use` 재사용, #4의 락 폴백 그대로 사용) → `domain/order/repository/OrderRepository` → `domain/order/event/OrderCompletedEvent` 발행 → `domain/order/event/OrderCompletedEventListener`(`@TransactionalEventListener(AFTER_COMMIT)`)가 Kafka로 전송.
-- 검증 순서(#42에서 재정리, #37에서 멱등 조회 추가): quantity(null이면 1, `<=0`이면 `INVALID_QUANTITY`, DB 호출 없이 가장 먼저) → **`Idempotency-Key` 헤더가 있으면 `OrderRepository#findByIdempotencyKey`로 먼저 조회, 있으면 여기서 즉시 그 주문 + 현재 잔액으로 반환(결제·나머지 검증 전부 스킵)** → 회원 존재(`MemberRepository#existsById`, 없으면 `MEMBER_NOT_FOUND`) → 메뉴 조회(`MenuRepository#findById`, 없으면 `MENU_NOT_FOUND`) → `PointService#use`(락 획득 → 잔액부족이면 `INSUFFICIENT_POINT`, 차감 없음) → `Order` 저장(`idempotencyKey` 포함) → 이벤트 발행. quantity를 맨 앞으로 옮긴 이유: 원래는 메뉴 조회 뒤에 검증해서, menuId·quantity가 둘 다 무효면 `MENU_NOT_FOUND`만 보고 quantity 문제를 못 보는 문제가 있었음(#35).
+- 검증 순서(#42에서 재정리, #37에서 멱등 조회를 맨 앞으로): **`Idempotency-Key` 헤더가 있으면 가장 먼저 확인** — 100자 초과면 `INVALID_INPUT`, `OrderRepository#findByIdempotencyKey`로 이미 처리된 키면 다른 회원 것인지 확인 후(다르면 `IDEMPOTENCY_KEY_CONFLICT`) 그 주문 + 현재 잔액으로 즉시 반환(quantity 검증을 포함해 나머지 전부 스킵) → quantity(null이면 1, `<=0`이면 `INVALID_QUANTITY`) → 회원 존재(`MemberRepository#existsById`, 없으면 `MEMBER_NOT_FOUND`) → 메뉴 조회(`MenuRepository#findById`, 없으면 `MENU_NOT_FOUND`) → `PointService#use`(락 획득 → 잔액부족이면 `INSUFFICIENT_POINT`, 차감 없음) → `Order` 저장(`idempotencyKey` 포함) → 이벤트 발행.
+  - quantity를 맨 앞으로 옮긴 이유(#35): 원래는 메뉴 조회 뒤에 검증해서, menuId·quantity가 둘 다 무효면 `MENU_NOT_FOUND`만 보고 quantity 문제를 못 보는 문제가 있었음.
+  - 멱등 조회를 quantity보다도 앞에 두는 이유(#37 자체 리뷰에서 발견): 재시도 body가 실수로 달라져도(예: quantity가 0으로 깨짐) 첫 응답을 그대로 돌려주는 멱등 보장 자체가 깨지면 안 되기 때문 — quantity 검증보다 "이미 처리된 요청인가"가 우선이다.
 
 ## 데이터 모델
 - `orders`에 주문 1건(단가 스냅샷 `unit_price`, `total_price = unit_price * quantity`, `order_group_id` UUID)을 저장하고, 같은 트랜잭션에서 `point_histories`에 `USE` 이력을 남긴다(`order_group_id` 포함). 상세 스펙: `docs/db/orders.md`.

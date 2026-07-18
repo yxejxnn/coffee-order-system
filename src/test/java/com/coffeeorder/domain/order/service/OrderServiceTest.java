@@ -181,6 +181,21 @@ class OrderServiceTest {
 	}
 
 	@Test
+	void create_throwsIdempotencyKeyConflict_whenKeyBelongsToDifferentMember() {
+		// 같은 키가 다른 회원(1L) 소유인데 지금 요청자는 999L인 경우 — 남의 주문/잔액을 반환하면 안 된다
+		Order existingOrder = new Order(1L, 2L, 1, 4500, 4500L, "existing-group-id", "shared-key");
+		when(orderRepository.findByIdempotencyKey("shared-key")).thenReturn(Optional.of(existingOrder));
+		OrderService orderService = new OrderService(orderRepository, memberRepository, menuRepository, pointService, eventPublisher);
+
+		assertThatThrownBy(() -> orderService.create(999L, 2L, 1, "shared-key"))
+				.isInstanceOf(CoffeeOrderException.class)
+				.extracting("errorCode")
+				.isEqualTo(ErrorCode.IDEMPOTENCY_KEY_CONFLICT);
+		verify(pointService, never()).getBalance(any());
+		verify(memberRepository, never()).existsById(any());
+	}
+
+	@Test
 	void create_proceedsNormally_whenIdempotencyKeyNotSeenBefore() {
 		when(orderRepository.findByIdempotencyKey("new-key")).thenReturn(Optional.empty());
 		when(memberRepository.existsById(1L)).thenReturn(true);

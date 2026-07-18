@@ -29,20 +29,32 @@ public class OrderService {
 	private final PointService pointService;
 	private final ApplicationEventPublisher eventPublisher;
 
+	private static final int MAX_IDEMPOTENCY_KEY_LENGTH = 100;
+
 	@Transactional
 	public OrderCreateResponse create(Long memberId, Long menuId, Integer quantity, String idempotencyKey) {
-		int orderQuantity = (quantity != null) ? quantity : 1;
-		if (orderQuantity <= 0) {
-			throw new CoffeeOrderException(ErrorCode.INVALID_QUANTITY);
-		}
-
-		// Idempotency-Key(선택)로 이미 처리된 재시도면 결제·검증을 전부 건너뛰고 그 결과를 그대로 반환한다.
+		// Idempotency-Key(선택)는 "이미 처리된 재시도인가"를 가장 먼저 확인한다 — quantity 등 이번 요청의
+		// body 검증보다도 앞서야, 재시도 body가 우연히/실수로 잘못돼도(예: quantity 0) 첫 응답을 그대로
+		// 돌려주는 멱등 보장이 깨지지 않는다(자체 리뷰에서 발견).
 		if (idempotencyKey != null) {
+			if (idempotencyKey.length() > MAX_IDEMPOTENCY_KEY_LENGTH) {
+				throw new CoffeeOrderException(ErrorCode.INVALID_INPUT);
+			}
 			Optional<Order> existing = orderRepository.findByIdempotencyKey(idempotencyKey);
 			if (existing.isPresent()) {
 				Order order = existing.get();
+				// 그 키로 저장된 주문이 이번 요청과 다른 회원 것이면 반환하지 않는다 — 그대로 돌려주면 키를
+				// 알아내거나 재사용한 제3자에게 남의 주문 내역·현재 잔액이 그대로 노출된다(자체 리뷰에서 발견).
+				if (!order.getMemberId().equals(memberId)) {
+					throw new CoffeeOrderException(ErrorCode.IDEMPOTENCY_KEY_CONFLICT);
+				}
 				return OrderCreateResponse.from(order, pointService.getBalance(order.getMemberId()));
 			}
+		}
+
+		int orderQuantity = (quantity != null) ? quantity : 1;
+		if (orderQuantity <= 0) {
+			throw new CoffeeOrderException(ErrorCode.INVALID_QUANTITY);
 		}
 
 		if (!memberRepository.existsById(memberId)) {

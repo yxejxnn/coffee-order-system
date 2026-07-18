@@ -24,7 +24,8 @@ public enum ErrorCode {
 	INSUFFICIENT_POINT(HttpStatus.CONFLICT, "POINT_002", "포인트 잔액이 부족합니다"),
 
 	// Order
-	INVALID_QUANTITY(HttpStatus.BAD_REQUEST, "ORDER_001", "수량은 0보다 커야 합니다");
+	INVALID_QUANTITY(HttpStatus.BAD_REQUEST, "ORDER_001", "수량은 0보다 커야 합니다"),
+	IDEMPOTENCY_KEY_CONFLICT(HttpStatus.CONFLICT, "ORDER_002", "이미 다른 요청에 사용된 Idempotency-Key입니다");
 
 	private final HttpStatus status;
 	private final String code;
