@@ -93,8 +93,6 @@ class OrderServiceTest {
 
 	@Test
 	void create_throwsInvalidQuantity_whenQuantityIsZeroOrNegative() {
-		when(memberRepository.existsById(1L)).thenReturn(true);
-		when(menuRepository.findById(2L)).thenReturn(Optional.of(new Menu("아메리카노", 4500)));
 		OrderService orderService = new OrderService(orderRepository, memberRepository, menuRepository, pointService, eventPublisher);
 
 		assertThatThrownBy(() -> orderService.create(1L, 2L, 0))
@@ -105,8 +103,23 @@ class OrderServiceTest {
 				.isInstanceOf(CoffeeOrderException.class)
 				.extracting("errorCode")
 				.isEqualTo(ErrorCode.INVALID_QUANTITY);
+		verify(memberRepository, never()).existsById(any());
+		verify(menuRepository, never()).findById(any());
 		verify(pointService, never()).use(anyLong(), anyLong(), anyString());
 		verify(orderRepository, never()).save(any());
+	}
+
+	@Test
+	void create_throwsInvalidQuantity_beforeCheckingMenuOrMember_whenBothAreInvalidToo() {
+		// menuId도 무효인 상황에서 quantity 오류가 가려지지 않고 먼저 보고돼야 한다(#35)
+		OrderService orderService = new OrderService(orderRepository, memberRepository, menuRepository, pointService, eventPublisher);
+
+		assertThatThrownBy(() -> orderService.create(999L, 999L, 0))
+				.isInstanceOf(CoffeeOrderException.class)
+				.extracting("errorCode")
+				.isEqualTo(ErrorCode.INVALID_QUANTITY);
+		verify(memberRepository, never()).existsById(any());
+		verify(menuRepository, never()).findById(any());
 	}
 
 	@Test

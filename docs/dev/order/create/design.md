@@ -6,13 +6,14 @@
 ## API / 인터페이스
 - `POST /api/orders` — 상세 계약(요청/응답/에러 코드)은 `docs/api/order.md` 참조.
 - 구현: `domain/order/controller/OrderController` → `domain/order/service/OrderService#create` → (포인트 차감은 `domain/point/service/PointService#use` 재사용, #4의 락 폴백 그대로 사용) → `domain/order/repository/OrderRepository` → `domain/order/event/OrderCompletedEvent` 발행 → `domain/order/event/OrderCompletedEventListener`(`@TransactionalEventListener(AFTER_COMMIT)`)가 Kafka로 전송.
-- 검증 순서: 회원 존재(`MemberRepository#existsById`, 없으면 `MEMBER_NOT_FOUND`) → 메뉴 조회(`MenuRepository#findById`, 없으면 `MENU_NOT_FOUND`) → quantity(null이면 1, `<=0`이면 `INVALID_QUANTITY`) → `PointService#use`(락 획득 → 잔액부족이면 `INSUFFICIENT_POINT`, 차감 없음) → `Order` 저장 → 이벤트 발행.
+- 검증 순서(#42에서 재정리): quantity(null이면 1, `<=0`이면 `INVALID_QUANTITY`, DB 호출 없이 가장 먼저) → 회원 존재(`MemberRepository#existsById`, 없으면 `MEMBER_NOT_FOUND`) → 메뉴 조회(`MenuRepository#findById`, 없으면 `MENU_NOT_FOUND`) → `PointService#use`(락 획득 → 잔액부족이면 `INSUFFICIENT_POINT`, 차감 없음) → `Order` 저장 → 이벤트 발행. quantity를 맨 앞으로 옮긴 이유: 원래는 메뉴 조회 뒤에 검증해서, menuId·quantity가 둘 다 무효면 `MENU_NOT_FOUND`만 보고 quantity 문제를 못 보는 문제가 있었음(#35).
 
 ## 데이터 모델
 - `orders`에 주문 1건(단가 스냅샷 `unit_price`, `total_price = unit_price * quantity`, `order_group_id` UUID)을 저장하고, 같은 트랜잭션에서 `point_histories`에 `USE` 이력을 남긴다(`order_group_id` 포함). 상세 스펙: `docs/db/orders.md`.
 - 포인트 차감은 `PointService#use(memberId, amount, orderGroupId)`로 위임한다 — `PointService#charge`가 이미 가진 "`findByMemberIdForUpdate` 락 → 없으면 회원존재확인 후 생성" 폴백을 그대로 재사용하기 위함(중복 구현·락 순서 불일치 방지). `Point#use(amount)`는 `charge`와 대칭으로 단순 차감만 하고, 잔액 검증(`balance < amount` → `INSUFFICIENT_POINT`)은 서비스에서 락 획득 직후 수행한다.
 
 ## 규칙 / 검증
+- **`memberRepository.existsById` 중복 체크(#42, 의도적으로 유지)**: `OrderService.create()`와 `PointService`(내부 `ensurePointCreated`, Point 없는 회원 부트스트랩 경로) 양쪽에 있다. `PointService` 쪽은 `PointController#charge`(사전 회원 검증이 없는 직접 API 진입점)의 정확성에 필수라 없앨 수 없고, `OrderService` 쪽을 없애면 회원 미존재 요청에서도 `menuRepository.findById`가 먼저 실행되는 불필요한 조회 + 에러 우선순위 역전(`MEMBER_NOT_FOUND` → `MENU_NOT_FOUND`)이라는 회귀가 생겨 그대로 둔다.
 - 동시성 제어는 #4와 동일하게 `POINT` 행 비관적 락으로 한다. 근거: `docs/policy/point.md`, [ADR-001](../../../adr/ADR-001-포인트-동시성제어.md).
 - quantity 유효성(`<=0` → `INVALID_QUANTITY`)은 Bean Validation이 아니라 서비스에서 직접 검사한다 — `PointChargeRequest.amount`와 동일 패턴. `GlobalExceptionHandler`는 Bean Validation 실패를 전부 `COMMON_001`로 매핑하는데, API 계약은 `ORDER_001`을 요구하기 때문.
 - **Kafka producer 공통 설정**: `application.yml`의 `spring.kafka.producer`(`key-serializer`=StringSerializer, `value-serializer`=JacksonJsonSerializer, `retries: 3`). ADR-002의 "발행 실패 시 N회 재시도"는 커스텀 재시도 루프 대신 Kafka producer 자체 `retries` 설정으로 충족한다(더 단순·표준적). 토픽명은 `com.coffeeorder.config.KafkaTopics.ORDER_COMPLETED`(cross-domain 상수라 `config` 패키지, #6·#7이 그대로 참조).
