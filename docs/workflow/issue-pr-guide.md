@@ -21,9 +21,9 @@ Claude가 PR을 스스로 리뷰·수정해 통과시킨 뒤 **머지 직전에 
 3. 테스트·규칙 판정 + docs/logs 기록 + design.md 갱신(SSOT)  ← Evaluate
 4. push(feature) → PR 생성(base: dev, "Closes #N")   (design.md 포함)
 5. Claude 자체 리뷰(/code-review --comment) → 발견사항 수정   (검토+수정 최대 2회, 그 뒤 통과)
-6. 리뷰 통과 → 머지 직전에 멈춤
+6. ongoing 문서를 전역 docs/dev/changes/로 파일명 그대로 이동(같은 feature 브랜치, push) → 머지 직전에 멈춤
    ══ 게이트 B: 사람 최종 검토 → 승인 → merge ══
-7. merge 후: 이슈 자동 close · ongoing→changes 이동 · feature 브랜치 삭제 → 다음 이슈(1로)
+7. merge 후: 이슈 자동 close · feature 브랜치 삭제 → 다음 이슈(1로)
 ```
 
 ---
@@ -106,17 +106,15 @@ git push
 
 ## 7. merge 후 마무리 → 다음 이슈
 
-merge가 완료되면 Claude는 (design.md는 이미 3단계에서 PR에 포함됐으므로 여기선 손대지 않는다):
+merge가 완료되면 Claude는 (design.md 갱신, ongoing 문서의 전역 `docs/dev/changes/` 이동은 이미 3단계·게이트 B 이전에 같은 PR로 끝났으므로 여기선 손대지 않는다):
 
-1. ongoing 문서를 **`changes/00X`로 채번 이동**.
-   - (상세: `docs/dev-doc-guide.md`, `docs/workflow/evaluate-guide.md` "통과 시 후속")
-2. **사용한 feature 브랜치를 삭제**한다 (로컬 + 원격):
+1. **사용한 feature 브랜치를 삭제**한다 (로컬 + 원격):
    ```bash
    git switch dev
    git branch -D feature/{이슈번호}-{기능}                 # 로컬 (원격에서 이미 merge됨)
    git push origin --delete feature/{이슈번호}-{기능}       # 원격 (GitHub 자동삭제 설정이 없으면)
    ```
-3. 이슈 close 확인 → **다음 이슈로** 넘어간다.
+2. 이슈 close 확인 → **다음 이슈로** 넘어간다.
 
 ---
 
