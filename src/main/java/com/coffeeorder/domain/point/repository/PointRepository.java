@@ -17,4 +17,7 @@ public interface PointRepository extends JpaRepository<Point, Long> {
 	// 잠금 없는 일반 조회(MVCC 스냅샷) — 존재 여부만 확인할 때는 이걸 먼저 써서, 존재하지 않는 행에
 	// SELECT ... FOR UPDATE(갭 락 위험)를 걸지 않는다.
 	boolean existsByMemberId(Long memberId);
+
+	// 잠금 없는 단순 조회 — 잔액을 참고용으로만 읽을 때(예: 멱등 재조회 응답) 쓴다.
+	Optional<Point> findByMemberId(Long memberId);
 }

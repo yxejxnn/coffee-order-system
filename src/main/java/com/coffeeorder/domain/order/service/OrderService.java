@@ -11,6 +11,7 @@ import com.coffeeorder.domain.order.event.OrderCompletedEvent;
 import com.coffeeorder.domain.order.repository.OrderRepository;
 import com.coffeeorder.domain.point.entity.Point;
 import com.coffeeorder.domain.point.service.PointService;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -29,11 +30,21 @@ public class OrderService {
 	private final ApplicationEventPublisher eventPublisher;
 
 	@Transactional
-	public OrderCreateResponse create(Long memberId, Long menuId, Integer quantity) {
+	public OrderCreateResponse create(Long memberId, Long menuId, Integer quantity, String idempotencyKey) {
 		int orderQuantity = (quantity != null) ? quantity : 1;
 		if (orderQuantity <= 0) {
 			throw new CoffeeOrderException(ErrorCode.INVALID_QUANTITY);
 		}
+
+		// Idempotency-Key(선택)로 이미 처리된 재시도면 결제·검증을 전부 건너뛰고 그 결과를 그대로 반환한다.
+		if (idempotencyKey != null) {
+			Optional<Order> existing = orderRepository.findByIdempotencyKey(idempotencyKey);
+			if (existing.isPresent()) {
+				Order order = existing.get();
+				return OrderCreateResponse.from(order, pointService.getBalance(order.getMemberId()));
+			}
+		}
+
 		if (!memberRepository.existsById(memberId)) {
 			throw new CoffeeOrderException(ErrorCode.MEMBER_NOT_FOUND);
 		}
@@ -45,7 +56,7 @@ public class OrderService {
 
 		Point point = pointService.use(memberId, totalPrice, orderGroupId);
 
-		Order order = new Order(memberId, menuId, orderQuantity, menu.getPrice(), totalPrice, orderGroupId);
+		Order order = new Order(memberId, menuId, orderQuantity, menu.getPrice(), totalPrice, orderGroupId, idempotencyKey);
 		Order savedOrder = orderRepository.save(order);
 
 		eventPublisher.publishEvent(new OrderCompletedEvent(orderGroupId, memberId, menuId, totalPrice));
