@@ -34,13 +34,16 @@ class PointServiceTest {
 	@Mock
 	private MemberRepository memberRepository;
 
+	@Mock
+	private PointBootstrapService pointBootstrapService;
+
 	@Test
 	void charge_increasesBalanceAndRecordsHistory_whenValid() {
 		Point point = new Point(1L);
 		point.charge(5000L);
 		when(pointRepository.findByMemberIdForUpdate(1L)).thenReturn(Optional.of(point));
 
-		PointChargeResponse response = new PointService(pointRepository, pointHistoryRepository, memberRepository).charge(1L, 3000L);
+		PointChargeResponse response = new PointService(pointRepository, pointHistoryRepository, memberRepository, pointBootstrapService).charge(1L, 3000L);
 
 		assertThat(response.memberId()).isEqualTo(1L);
 		assertThat(response.balance()).isEqualTo(8000L);
@@ -49,7 +52,7 @@ class PointServiceTest {
 
 	@Test
 	void charge_throwsInvalidAmount_whenAmountIsZeroOrNegative() {
-		PointService pointService = new PointService(pointRepository, pointHistoryRepository, memberRepository);
+		PointService pointService = new PointService(pointRepository, pointHistoryRepository, memberRepository, pointBootstrapService);
 
 		assertThatThrownBy(() -> pointService.charge(1L, 0L))
 				.isInstanceOf(CoffeeOrderException.class)
@@ -64,7 +67,7 @@ class PointServiceTest {
 
 	@Test
 	void charge_throwsInvalidAmount_whenAmountIsNull() {
-		PointService pointService = new PointService(pointRepository, pointHistoryRepository, memberRepository);
+		PointService pointService = new PointService(pointRepository, pointHistoryRepository, memberRepository, pointBootstrapService);
 
 		assertThatThrownBy(() -> pointService.charge(1L, null))
 				.isInstanceOf(CoffeeOrderException.class)
@@ -76,7 +79,7 @@ class PointServiceTest {
 	void charge_throwsMemberNotFound_whenPointRowMissingAndMemberDoesNotExist() {
 		when(pointRepository.findByMemberIdForUpdate(999L)).thenReturn(Optional.empty());
 		when(memberRepository.existsById(999L)).thenReturn(false);
-		PointService pointService = new PointService(pointRepository, pointHistoryRepository, memberRepository);
+		PointService pointService = new PointService(pointRepository, pointHistoryRepository, memberRepository, pointBootstrapService);
 
 		assertThatThrownBy(() -> pointService.charge(999L, 3000L))
 				.isInstanceOf(CoffeeOrderException.class)
@@ -86,14 +89,14 @@ class PointServiceTest {
 
 	@Test
 	void charge_createsPointAndSucceeds_whenPointRowMissingButMemberExists() {
-		when(pointRepository.findByMemberIdForUpdate(7L)).thenReturn(Optional.empty());
+		when(pointRepository.findByMemberIdForUpdate(7L))
+				.thenReturn(Optional.empty(), Optional.of(new Point(7L)));
 		when(memberRepository.existsById(7L)).thenReturn(true);
-		when(pointRepository.save(org.mockito.ArgumentMatchers.any(Point.class)))
-				.thenAnswer(invocation -> invocation.getArgument(0));
-		PointService pointService = new PointService(pointRepository, pointHistoryRepository, memberRepository);
+		PointService pointService = new PointService(pointRepository, pointHistoryRepository, memberRepository, pointBootstrapService);
 
 		PointChargeResponse response = pointService.charge(7L, 3000L);
 
+		verify(pointBootstrapService).ensurePointExists(7L);
 		assertThat(response.memberId()).isEqualTo(7L);
 		assertThat(response.balance()).isEqualTo(3000L);
 	}
@@ -104,7 +107,7 @@ class PointServiceTest {
 		point.charge(10000L);
 		when(pointRepository.findByMemberIdForUpdate(1L)).thenReturn(Optional.of(point));
 
-		Point result = new PointService(pointRepository, pointHistoryRepository, memberRepository).use(1L, 4500L, "group-1");
+		Point result = new PointService(pointRepository, pointHistoryRepository, memberRepository, pointBootstrapService).use(1L, 4500L, "group-1");
 
 		assertThat(result.getBalance()).isEqualTo(5500L);
 		verify(pointHistoryRepository).save(argThatUseHistory(1L, 4500L, "group-1"));
@@ -115,7 +118,7 @@ class PointServiceTest {
 		Point point = new Point(1L);
 		point.charge(1000L);
 		when(pointRepository.findByMemberIdForUpdate(1L)).thenReturn(Optional.of(point));
-		PointService pointService = new PointService(pointRepository, pointHistoryRepository, memberRepository);
+		PointService pointService = new PointService(pointRepository, pointHistoryRepository, memberRepository, pointBootstrapService);
 
 		assertThatThrownBy(() -> pointService.use(1L, 4500L, "group-1"))
 				.isInstanceOf(CoffeeOrderException.class)
@@ -126,7 +129,7 @@ class PointServiceTest {
 
 	@Test
 	void use_throwsInvalidAmount_whenAmountIsZeroOrNegative() {
-		PointService pointService = new PointService(pointRepository, pointHistoryRepository, memberRepository);
+		PointService pointService = new PointService(pointRepository, pointHistoryRepository, memberRepository, pointBootstrapService);
 
 		assertThatThrownBy(() -> pointService.use(1L, 0L, "group-1"))
 				.isInstanceOf(CoffeeOrderException.class)
@@ -141,16 +144,16 @@ class PointServiceTest {
 
 	@Test
 	void use_createsPointAndThrowsInsufficientPoint_whenPointRowMissingButMemberExists() {
-		when(pointRepository.findByMemberIdForUpdate(7L)).thenReturn(Optional.empty());
+		when(pointRepository.findByMemberIdForUpdate(7L))
+				.thenReturn(Optional.empty(), Optional.of(new Point(7L)));
 		when(memberRepository.existsById(7L)).thenReturn(true);
-		when(pointRepository.save(org.mockito.ArgumentMatchers.any(Point.class)))
-				.thenAnswer(invocation -> invocation.getArgument(0));
-		PointService pointService = new PointService(pointRepository, pointHistoryRepository, memberRepository);
+		PointService pointService = new PointService(pointRepository, pointHistoryRepository, memberRepository, pointBootstrapService);
 
 		assertThatThrownBy(() -> pointService.use(7L, 4500L, "group-1"))
 				.isInstanceOf(CoffeeOrderException.class)
 				.extracting("errorCode")
 				.isEqualTo(ErrorCode.INSUFFICIENT_POINT);
+		verify(pointBootstrapService).ensurePointExists(7L);
 	}
 
 	private static PointHistory argThatChargeHistory(Long memberId, Long amount) {
