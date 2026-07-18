@@ -24,6 +24,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -178,6 +179,13 @@ class MultiInstanceVerificationTest {
 		int apply(int port) throws Exception;
 	}
 
+	/*
+	 * excludeTags 'multi-instance'(build.gradle)는 Gradle test 태스크에만 적용된다.
+	 * IntelliJ 등 IDE 네이티브 JUnit 러너로 돌리면 이 제외를 모르고 그냥 실행하므로,
+	 * 사전조건(2인스턴스 기동) 미충족을 예외(=FAILED)가 아니라 Assumptions(=ABORTED/스킵)로
+	 * 알려야 어떤 러너에서 실행하든 "테스트가 깨졌다"가 아니라 "전제조건 미충족으로 건너뜀"으로
+	 * 정확히 표시된다.
+	 */
 	private static void waitUntilReady() throws InterruptedException {
 		long deadline = System.currentTimeMillis() + READY_TIMEOUT.toMillis();
 		while (System.currentTimeMillis() < deadline) {
@@ -186,8 +194,8 @@ class MultiInstanceVerificationTest {
 			}
 			Thread.sleep(500);
 		}
-		throw new IllegalStateException(
-			"두 인스턴스가 준비되지 않았다. scripts/verify-multi-instance.sh로 SERVER_PORT=" + port1 + "/" + port2
+		Assumptions.assumeTrue(false,
+			"두 인스턴스가 준비되지 않아 스킵한다. scripts/verify-multi-instance.sh로 SERVER_PORT=" + port1 + "/" + port2
 				+ " 두 인스턴스를 먼저 기동했는지 확인하라.");
 	}
 
