@@ -24,9 +24,9 @@ class OrderControllerTest {
 	void create_returns201WithOrderResult() {
 		OrderCreateRequest request = new OrderCreateRequest(1L, 2L, 1);
 		OrderCreateResponse expected = new OrderCreateResponse("group-uuid", 1L, 2L, 1, 4500L, 10000L);
-		when(orderService.create(1L, 2L, 1)).thenReturn(expected);
+		when(orderService.create(1L, 2L, 1, null)).thenReturn(expected);
 
-		ResponseEntity<ApiResponse<OrderCreateResponse>> response = new OrderController(orderService).create(request);
+		ResponseEntity<ApiResponse<OrderCreateResponse>> response = new OrderController(orderService).create(null, request);
 
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
 		assertThat(response.getBody()).isNotNull();
@@ -34,5 +34,17 @@ class OrderControllerTest {
 		assertThat(response.getBody().getData().orderGroupId()).isEqualTo("group-uuid");
 		assertThat(response.getBody().getData().totalPrice()).isEqualTo(4500L);
 		assertThat(response.getBody().getData().balance()).isEqualTo(10000L);
+	}
+
+	@Test
+	void create_passesIdempotencyKeyHeaderToService() {
+		OrderCreateRequest request = new OrderCreateRequest(1L, 2L, 1);
+		OrderCreateResponse expected = new OrderCreateResponse("group-uuid", 1L, 2L, 1, 4500L, 10000L);
+		when(orderService.create(1L, 2L, 1, "retry-key")).thenReturn(expected);
+
+		ResponseEntity<ApiResponse<OrderCreateResponse>> response =
+				new OrderController(orderService).create("retry-key", request);
+
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
 	}
 }

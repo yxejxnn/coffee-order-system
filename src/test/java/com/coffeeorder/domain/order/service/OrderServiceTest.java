@@ -57,7 +57,7 @@ class OrderServiceTest {
 		when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 		OrderService orderService = new OrderService(orderRepository, memberRepository, menuRepository, pointService, eventPublisher);
 
-		OrderCreateResponse response = orderService.create(1L, 2L, 1);
+		OrderCreateResponse response = orderService.create(1L, 2L, 1, null);
 
 		assertThat(response.memberId()).isEqualTo(1L);
 		assertThat(response.menuId()).isEqualTo(2L);
@@ -85,7 +85,7 @@ class OrderServiceTest {
 		when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 		OrderService orderService = new OrderService(orderRepository, memberRepository, menuRepository, pointService, eventPublisher);
 
-		OrderCreateResponse response = orderService.create(1L, 2L, null);
+		OrderCreateResponse response = orderService.create(1L, 2L, null, null);
 
 		assertThat(response.quantity()).isEqualTo(1);
 		assertThat(response.totalPrice()).isEqualTo(4500L);
@@ -95,11 +95,11 @@ class OrderServiceTest {
 	void create_throwsInvalidQuantity_whenQuantityIsZeroOrNegative() {
 		OrderService orderService = new OrderService(orderRepository, memberRepository, menuRepository, pointService, eventPublisher);
 
-		assertThatThrownBy(() -> orderService.create(1L, 2L, 0))
+		assertThatThrownBy(() -> orderService.create(1L, 2L, 0, null))
 				.isInstanceOf(CoffeeOrderException.class)
 				.extracting("errorCode")
 				.isEqualTo(ErrorCode.INVALID_QUANTITY);
-		assertThatThrownBy(() -> orderService.create(1L, 2L, -1))
+		assertThatThrownBy(() -> orderService.create(1L, 2L, -1, null))
 				.isInstanceOf(CoffeeOrderException.class)
 				.extracting("errorCode")
 				.isEqualTo(ErrorCode.INVALID_QUANTITY);
@@ -114,7 +114,7 @@ class OrderServiceTest {
 		// menuId도 무효인 상황에서 quantity 오류가 가려지지 않고 먼저 보고돼야 한다(#35)
 		OrderService orderService = new OrderService(orderRepository, memberRepository, menuRepository, pointService, eventPublisher);
 
-		assertThatThrownBy(() -> orderService.create(999L, 999L, 0))
+		assertThatThrownBy(() -> orderService.create(999L, 999L, 0, null))
 				.isInstanceOf(CoffeeOrderException.class)
 				.extracting("errorCode")
 				.isEqualTo(ErrorCode.INVALID_QUANTITY);
@@ -127,7 +127,7 @@ class OrderServiceTest {
 		when(memberRepository.existsById(999L)).thenReturn(false);
 		OrderService orderService = new OrderService(orderRepository, memberRepository, menuRepository, pointService, eventPublisher);
 
-		assertThatThrownBy(() -> orderService.create(999L, 2L, 1))
+		assertThatThrownBy(() -> orderService.create(999L, 2L, 1, null))
 				.isInstanceOf(CoffeeOrderException.class)
 				.extracting("errorCode")
 				.isEqualTo(ErrorCode.MEMBER_NOT_FOUND);
@@ -140,7 +140,7 @@ class OrderServiceTest {
 		when(menuRepository.findById(999L)).thenReturn(Optional.empty());
 		OrderService orderService = new OrderService(orderRepository, memberRepository, menuRepository, pointService, eventPublisher);
 
-		assertThatThrownBy(() -> orderService.create(1L, 999L, 1))
+		assertThatThrownBy(() -> orderService.create(1L, 999L, 1, null))
 				.isInstanceOf(CoffeeOrderException.class)
 				.extracting("errorCode")
 				.isEqualTo(ErrorCode.MENU_NOT_FOUND);
@@ -154,11 +154,47 @@ class OrderServiceTest {
 				.thenThrow(new CoffeeOrderException(ErrorCode.INSUFFICIENT_POINT));
 		OrderService orderService = new OrderService(orderRepository, memberRepository, menuRepository, pointService, eventPublisher);
 
-		assertThatThrownBy(() -> orderService.create(1L, 2L, 1))
+		assertThatThrownBy(() -> orderService.create(1L, 2L, 1, null))
 				.isInstanceOf(CoffeeOrderException.class)
 				.extracting("errorCode")
 				.isEqualTo(ErrorCode.INSUFFICIENT_POINT);
 		verify(orderRepository, never()).save(any());
 		verify(eventPublisher, never()).publishEvent(any());
+	}
+
+	@Test
+	void create_returnsExistingOrder_whenIdempotencyKeyAlreadyProcessed() {
+		Order existingOrder = new Order(1L, 2L, 1, 4500, 4500L, "existing-group-id", "retry-key-1");
+		when(orderRepository.findByIdempotencyKey("retry-key-1")).thenReturn(Optional.of(existingOrder));
+		when(pointService.getBalance(1L)).thenReturn(9000L);
+		OrderService orderService = new OrderService(orderRepository, memberRepository, menuRepository, pointService, eventPublisher);
+
+		OrderCreateResponse response = orderService.create(1L, 2L, 1, "retry-key-1");
+
+		assertThat(response.orderGroupId()).isEqualTo("existing-group-id");
+		assertThat(response.balance()).isEqualTo(9000L);
+		verify(memberRepository, never()).existsById(any());
+		verify(menuRepository, never()).findById(any());
+		verify(pointService, never()).use(anyLong(), anyLong(), anyString());
+		verify(orderRepository, never()).save(any());
+		verify(eventPublisher, never()).publishEvent(any());
+	}
+
+	@Test
+	void create_proceedsNormally_whenIdempotencyKeyNotSeenBefore() {
+		when(orderRepository.findByIdempotencyKey("new-key")).thenReturn(Optional.empty());
+		when(memberRepository.existsById(1L)).thenReturn(true);
+		when(menuRepository.findById(2L)).thenReturn(Optional.of(new Menu("아메리카노", 4500)));
+		Point point = new Point(1L);
+		point.charge(10000L);
+		when(pointService.use(eq(1L), eq(4500L), anyString())).thenReturn(point);
+		when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+		OrderService orderService = new OrderService(orderRepository, memberRepository, menuRepository, pointService, eventPublisher);
+
+		OrderCreateResponse response = orderService.create(1L, 2L, 1, "new-key");
+
+		assertThat(response.balance()).isEqualTo(10000L);
+		verify(pointService).use(eq(1L), eq(4500L), anyString());
+		verify(orderRepository).save(any(Order.class));
 	}
 }
