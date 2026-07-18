@@ -167,8 +167,13 @@ class MultiInstanceVerificationTest {
 		assertThat(successCount.get()).isEqualTo(AFFORDABLE_ORDERS);
 		assertThat(insufficientCount.get()).isEqualTo(ORDER_THREAD_COUNT - AFFORDABLE_ORDERS);
 
+		/* balanceBefore는 이미 사전 충전분을 포함한 값이므로, 정확히 소진됐다면
+		 * 델타는 0이 아니라 "감당 가능 개수만큼만 깎였다"(-menuPrice*AFFORDABLE_ORDERS)여야 한다.
+		 * 델타가 그보다 더 크게(초과차감) 또는 작게(lost update로 일부만 반영) 나오면 안 된다. */
 		long balanceAfter = readPointBalance(orderMemberId);
-		assertThat(balanceAfter - balanceBefore).as("정확히 소진되어야 한다(초과차감 없음)").isZero();
+		assertThat(balanceAfter - balanceBefore)
+			.as("정확히 감당 가능한 만큼만 소진되어야 한다(초과차감·lost update 없음)")
+			.isEqualTo(-(menuPrice * AFFORDABLE_ORDERS));
 
 		long orderCountAfter = readOrderCount(orderMemberId);
 		assertThat(orderCountAfter - orderCountBefore).isEqualTo(AFFORDABLE_ORDERS);
