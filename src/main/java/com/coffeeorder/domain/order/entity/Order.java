@@ -17,7 +17,10 @@ import org.hibernate.annotations.CreationTimestamp;
 @Entity
 @Table(
 		name = "orders",
-		uniqueConstraints = @UniqueConstraint(name = "uk_order_group_id", columnNames = "order_group_id"),
+		uniqueConstraints = {
+			@UniqueConstraint(name = "uk_order_group_id", columnNames = "order_group_id"),
+			@UniqueConstraint(name = "uk_idempotency_key", columnNames = "idempotency_key")
+		},
 		indexes = @Index(name = "idx_created_menu", columnList = "created_at, menu_id")
 )
 @Getter
@@ -46,16 +49,23 @@ public class Order {
 	@Column(name = "order_group_id", nullable = false, length = 36)
 	private String orderGroupId;
 
+	// 클라이언트가 보낸 Idempotency-Key(선택) — 재시도 중복 차단용. 헤더를 안 보내면 null(유니크 제약은
+	// MySQL에서 NULL을 여러 개 허용하므로 기존 흐름엔 영향 없음).
+	@Column(name = "idempotency_key", length = 100)
+	private String idempotencyKey;
+
 	@CreationTimestamp
 	@Column(nullable = false, updatable = false)
 	private LocalDateTime createdAt;
 
-	public Order(Long memberId, Long menuId, Integer quantity, Integer unitPrice, Long totalPrice, String orderGroupId) {
+	public Order(Long memberId, Long menuId, Integer quantity, Integer unitPrice, Long totalPrice, String orderGroupId,
+			String idempotencyKey) {
 		this.memberId = memberId;
 		this.menuId = menuId;
 		this.quantity = quantity;
 		this.unitPrice = unitPrice;
 		this.totalPrice = totalPrice;
 		this.orderGroupId = orderGroupId;
+		this.idempotencyKey = idempotencyKey;
 	}
 }

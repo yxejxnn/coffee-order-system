@@ -76,11 +76,11 @@ class EntityMappingTest {
 		Menu menu = menuRepository.save(new Menu("아메리카노", 4500));
 		String orderGroupId = "11111111-1111-1111-1111-111111111111";
 
-		orderRepository.save(new Order(member.getId(), menu.getId(), 2, 4500, 9000L, orderGroupId));
+		orderRepository.save(new Order(member.getId(), menu.getId(), 2, 4500, 9000L, orderGroupId, null));
 		entityManager.flush();
 
 		assertThatThrownBy(() -> {
-			orderRepository.saveAndFlush(new Order(member.getId(), menu.getId(), 1, 4500, 4500L, orderGroupId));
+			orderRepository.saveAndFlush(new Order(member.getId(), menu.getId(), 1, 4500, 4500L, orderGroupId, null));
 		}).isInstanceOf(DataIntegrityViolationException.class);
 	}
 

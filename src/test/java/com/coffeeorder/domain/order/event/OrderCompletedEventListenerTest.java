@@ -73,7 +73,7 @@ class OrderCompletedEventListenerTest {
 		pointRepository.save(point);
 		Menu menu = menuRepository.save(new Menu("아메리카노", 4500));
 
-		OrderCreateResponse response = orderService.create(member.getId(), menu.getId(), 1);
+		OrderCreateResponse response = orderService.create(member.getId(), menu.getId(), 1, null);
 
 		ConsumerRecords<String, String> records = KafkaTestUtils.getRecords(consumer, Duration.ofSeconds(10));
 		boolean found = false;
@@ -91,7 +91,7 @@ class OrderCompletedEventListenerTest {
 		pointRepository.save(new Point(member.getId()));
 		Menu menu = menuRepository.save(new Menu("아메리카노", 4500));
 
-		assertThatThrownBy(() -> orderService.create(member.getId(), menu.getId(), 1))
+		assertThatThrownBy(() -> orderService.create(member.getId(), menu.getId(), 1, null))
 				.isInstanceOf(CoffeeOrderException.class);
 
 		ConsumerRecords<String, String> records = KafkaTestUtils.getRecords(consumer, Duration.ofSeconds(3));

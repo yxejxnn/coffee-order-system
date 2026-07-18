@@ -40,6 +40,14 @@ public class PointService {
 		return PointChargeResponse.from(point);
 	}
 
+	// 잠금 없는 단순 잔액 조회 — 이미 결제가 끝난 뒤 참고용으로만 잔액이 필요할 때(예: 멱등 재조회 응답) 쓴다.
+	// 결제(charge/use)에는 쓰지 않는다 — 그쪽은 반드시 getLockedPoint의 비관적 락을 거쳐야 한다.
+	public Long getBalance(Long memberId) {
+		return pointRepository.findByMemberId(memberId)
+				.orElseThrow(() -> new IllegalStateException("Point가 존재해야 하는 회원인데 없음: memberId=" + memberId))
+				.getBalance();
+	}
+
 	@Transactional
 	public Point use(Long memberId, Long amount, String orderGroupId) {
 		if (amount == null || amount <= 0) {

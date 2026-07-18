@@ -60,7 +60,7 @@ class OrderServiceConcurrencyTest {
 		for (int i = 0; i < THREAD_COUNT; i++) {
 			executor.submit(() -> {
 				try {
-					orderService.create(member.getId(), menu.getId(), 1);
+					orderService.create(member.getId(), menu.getId(), 1, null);
 					successCount.incrementAndGet();
 				} catch (CoffeeOrderException e) {
 					insufficientCount.incrementAndGet();
@@ -99,7 +99,7 @@ class OrderServiceConcurrencyTest {
 		for (int i = 0; i < THREAD_COUNT; i++) {
 			executor.submit(() -> {
 				try {
-					orderService.create(member.getId(), menu.getId(), 1);
+					orderService.create(member.getId(), menu.getId(), 1, null);
 				} catch (CoffeeOrderException e) {
 					// balance 0이라 전원 INSUFFICIENT_POINT가 기대값 — 데드락 없이 이 예외로 끝나면 정상
 				} catch (Throwable e) {
