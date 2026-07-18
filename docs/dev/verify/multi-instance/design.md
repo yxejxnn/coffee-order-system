@@ -21,6 +21,7 @@
 - 검증 레벨: **Level 5**(로컬 2인스턴스 실기동) · **Level 6**(실제 HTTP, 두 시나리오 모두) PASS. 상세 근거는 `docs/logs/verify/multi-instance/001-verify.md`.
 - 기본 `./gradlew test`에는 `MultiInstanceVerificationTest`를 포함하지 않는다(2프로세스가 실제로 떠 있어야만 통과하는 전제가 있어 일반 빌드/CI를 깨뜨리면 안 됨) — `build.gradle`의 `excludeTags 'multi-instance'` + 전용 `verifyMultiInstance` 태스크로 분리했다.
 - **`excludeTags`는 Gradle `test` 태스크에만 적용되는 설정**이라, IntelliJ 등 IDE 네이티브 JUnit 러너로 돌리면 이 제외를 모르고 그냥 실행한다. 이 경우 사전조건(2인스턴스 기동) 미충족을 예외(`FAILED`)가 아니라 `Assumptions.assumeTrue`(`ABORTED`)로 알리도록 `waitUntilReady()`를 작성했다 — 이건 JUnit Platform 표준 동작이라 러너와 무관하게 "실패"가 아니라 "스킵됨"으로 정확히 표시된다.
+- **`DB_HOST`/`DB_PORT`/`DB_NAME`은 기본값을 두지 않는다**(`DB_USERNAME`/`DB_PASSWORD`와 동일하게 fail-fast). 이 개발 환경엔 자격증명이 서로 다른 MySQL이 두 개 공존해서(도커 3307, 로컬 3306 — IntelliJ의 JUnit 기본 실행 설정은 3306용 자격증명이 이미 박혀 있음) 어떤 기본값을 골라도 누군가의 환경에선 "조용히 엉뚱한 DB에 접속 시도"가 된다. 실행자가 항상 명시하게 강제해 혼란스러운 `Access denied` 대신 즉시(1초) 무엇을 설정해야 하는지 알려주는 실패로 대체했다.
 
 ## 관련 문서
 - [`ADR-001`](../../../adr/ADR-001-포인트-동시성제어.md) · [`ADR-002`](../../../adr/ADR-002-주문이벤트-비동기전달.md) · [`ADR-003`](../../../adr/ADR-003-인기메뉴-집계전략.md) — 이 검증이 종합적으로 증명하는 대상.
