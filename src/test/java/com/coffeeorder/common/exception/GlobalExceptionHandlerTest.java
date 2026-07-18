@@ -2,9 +2,13 @@ package com.coffeeorder.common.exception;
 
 import com.coffeeorder.common.response.ApiResponse;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.mock.http.MockHttpInputMessage;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -34,6 +38,32 @@ class GlobalExceptionHandlerTest {
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
 		assertThat(response.getBody()).isNotNull();
 		assertThat(response.getBody().getCode()).isEqualTo("COMMON_003");
+	}
+
+	@Test
+	void handleHttpMessageNotReadableException_mapsToInvalidInput() {
+		HttpMessageNotReadableException exception =
+			new HttpMessageNotReadableException("malformed JSON", new MockHttpInputMessage(new byte[0]));
+
+		ResponseEntity<ApiResponse<Void>> response = handler.handleHttpMessageNotReadableException(exception);
+
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+		assertThat(response.getBody()).isNotNull();
+		assertThat(response.getBody().getCode()).isEqualTo("COMMON_001");
+	}
+
+	@Test
+	void handleMethodArgumentTypeMismatchException_mapsToInvalidInput() throws NoSuchMethodException {
+		MethodParameter param = new MethodParameter(
+			GlobalExceptionHandlerTest.class.getDeclaredMethod("handleMethodArgumentTypeMismatchException_mapsToInvalidInput"), -1);
+		MethodArgumentTypeMismatchException exception =
+			new MethodArgumentTypeMismatchException("abc", Long.class, "quantity", param, new NumberFormatException());
+
+		ResponseEntity<ApiResponse<Void>> response = handler.handleMethodArgumentTypeMismatchException(exception);
+
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+		assertThat(response.getBody()).isNotNull();
+		assertThat(response.getBody().getCode()).isEqualTo("COMMON_001");
 	}
 
 	@Test
