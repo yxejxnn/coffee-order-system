@@ -22,7 +22,7 @@
 - 신규: `RankingQueryServiceUnitTest`에 "메뉴 삭제로 조회 실패 시 스킵" 케이스 추가, `RankingQueryServiceTest`의 teardown을 index 쌍 리스트에서 `Runnable` 클린업 리스트로 정리(단순화 각도).
 
 ## 관련 결정·질문
-- [`docs/api/ranking.md`](../../../../api/ranking.md) · [`docs/policy/popular-menu.md`](../../../../policy/popular-menu.md) · [`ADR-003`](../../../../adr/ADR-003-인기메뉴-집계전략.md)
+- [`docs/api/ranking.md`](../../api/ranking.md) · [`docs/policy/popular-menu.md`](../../policy/popular-menu.md) · [`ADR-003`](../../adr/ADR-003-인기메뉴-집계전략.md)
 
 ## 태스크
 - [x] `RankingRedisKeys` 보강(`RANKING_ZONE` 이동, `recentRankingKeys`) · `RankingQueryService` · `RankingController` · `PopularMenuResponse` 구현
