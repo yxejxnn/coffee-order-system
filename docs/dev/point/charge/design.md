@@ -6,7 +6,7 @@
 ## API / 인터페이스
 - `POST /api/points/charge` — 상세 계약(요청/응답/에러 코드)은 `docs/api/point.md` 참조.
 - 구현: `domain/point/controller/PointController` → `domain/point/service/PointService#charge` → `domain/point/repository/PointRepository#findByMemberIdForUpdate`(`@Lock(PESSIMISTIC_WRITE)`) → `domain/point/entity/Point#charge` + `domain/point/repository/PointHistoryRepository`.
-- 검증 순서: `amount <= 0`(또는 null, 단 null은 컨트롤러 `@Valid`의 `@NotNull`이 먼저 가로채 `COMMON_001`로 응답) → `INVALID_AMOUNT`(400) 먼저 확인 후, `POINT` 락 조회 → 없으면 `MemberRepository#existsById`로 회원 존재를 확인해 없으면 `MEMBER_NOT_FOUND`(404), 있으면(불변식이 깨진 예외 상황) 그 자리에서 `Point`를 만들어 계속 진행.
+- 검증 순서: `amount <= 0`(또는 null, 단 null은 컨트롤러 `@Valid`의 `@NotNull`이 먼저 가로채 `COMMON_001`로 응답) → `INVALID_AMOUNT`(400) 먼저 확인 후, `POINT` 락 조회 → 없으면 `MemberRepository#existsById`로 회원 존재를 확인해 없으면 `MEMBER_NOT_FOUND`(404), 있으면(불변식이 깨진 예외 상황) `PointBootstrapService`(별도 트랜잭션)에 위임해 그 자리에서 `Point`를 만들고 계속 진행(#34, 아래 참고).
 
 ## 데이터 모델
 - `points.balance`를 증가시키고(`Math.addExact`로 오버플로우 시 예외 — 조용한 wrap 방지), 같은 트랜잭션에서 `point_histories`에 `CHARGE` 이력 1건을 남긴다(`order_group_id`는 null). 상세 스펙: `docs/db/point.md`, `docs/db/point-history.md`.
@@ -15,10 +15,14 @@
 ## 규칙 / 검증
 - 동시성 제어는 `POINT` 행 비관적 락으로 한다. 근거: `docs/policy/point.md`, [ADR-001](../../../adr/ADR-001-포인트-동시성제어.md).
 - **`DataSeeder`가 회원을 시드할 때 `Point`(balance 0)도 함께 생성**하도록 이 이슈에서 바꿨다(`docs/dev/domain/entity/design.md`도 갱신). 최초 계획은 "#4 첫 충전 시 lazy 생성"이었으나, lazy 생성은 동일 회원이 첫 충전을 동시에 두 번 요청하면 두 트랜잭션이 동시에 `Point` insert를 시도해 `uk_member_id` unique 제약이 충돌하는 엣지케이스를 별도로 처리해야 한다. 시드 시점에 미리 만들어 두면 그 엣지케이스 자체가 없어지고, `PointService`는 "회원마다 Point가 항상 존재한다"는 단순한 가정으로 구현할 수 있다.
-- **DataSeeder 시드는 완전히 빈 테이블일 때만 실행**(`memberRepository.count() == 0`)되므로, 이 변경 이전에 이미 존재하던 회원(또는 향후 DataSeeder를 거치지 않는 어떤 경로로 생성된 회원)은 `Point`가 없을 수 있다 — 이런 회원이 처음 충전을 시도하면 `PointService.charge`가 `memberRepository.existsById`로 실제 존재를 확인한 뒤 그 자리에서 `Point`를 만들어 정상 처리한다(자체 리뷰에서 발견 후 반영, `docs/logs/point/charge/001-charge.md` Attempt 2 참고). 단, 이 폴백 경로 자체가 동시에 두 번 호출되는 아주 좁은 경우(불변식이 이미 깨진 회원의 첫 충전이 다시 동시에 두 번 들어오는 경우)엔 여전히 `uk_member_id` 충돌 가능성이 이론적으로 남아 있다 — 정상 경로(시드로 생성된 회원)에서는 발생하지 않는다.
+- **DataSeeder 시드는 완전히 빈 테이블일 때만 실행**(`memberRepository.count() == 0`)되므로, 이 변경 이전에 이미 존재하던 회원(또는 향후 DataSeeder를 거치지 않는 어떤 경로로 생성된 회원)은 `Point`가 없을 수 있다 — 이런 회원이 처음 충전을 시도하면 `PointService.charge`가 `memberRepository.existsById`로 실제 존재를 확인한 뒤 그 자리에서 `Point`를 만들어 정상 처리한다(자체 리뷰에서 발견 후 반영, `docs/logs/point/charge/001-charge.md` Attempt 2 참고).
+- **(#34) 이 폴백 경로 자체의 동시성 구멍을 해소**: 이런 회원에게 첫 충전이 동시에 여러 번 들어오면(불변식이 깨진 회원 → 여러 트랜잭션이 동시에 `Point` 없음을 관찰) 다음 두 문제가 있었다 — ① MySQL 기본 격리수준(REPEATABLE READ)에서 존재하지 않는 행에 대한 `SELECT ... FOR UPDATE`가 갭 락을 걸어, 동시에 여러 트랜잭션이 같은 갭을 잠그려다 데드락이 남. ② insert 실패(uk_member_id 위반) 처리를 원래 트랜잭션 안에서 하면, MySQL이 duplicate-key 충돌 시 그 행에 공유 락을 잡아두는 것과 뒤이은 `SELECT ... FOR UPDATE`의 배타 락 승격이 맞물려 또 데드락이 남. 두 문제 모두 동시성 테스트(`PointServiceConcurrencyTest`)로 직접 재현해 확인했다.
+  - 해결: `charge`/`use` 트랜잭션을 `READ_COMMITTED`로 낮춰 ①을 없앴다(갭 락 미사용). `Point` 생성 자체는 `PointBootstrapService.ensurePointExists`(`REQUIRES_NEW`, 별도 트랜잭션)에 위임해, 그 트랜잭션이 커밋(또는 duplicate-key로 인한 롤백)까지 완전히 끝난 뒤에야 바깥 트랜잭션이 새로 `SELECT ... FOR UPDATE`를 걸도록 해 ②를 없앴다. `ensurePointExists`가 `DataIntegrityViolationException`으로 실패하면(동시에 다른 트랜잭션이 먼저 만듦) `PointService`가 잡아 무시하고 재조회로 이어간다.
+  - `REQUIRES_NEW`는 같은 스레드가 커넥션을 순간적으로 2개(바깥 보류분 + 중첩분) 쥐게 하므로, HikariCP `maximum-pool-size`를 10→20으로 올렸다(`application.yml`) — 이 폴백 경로 자체가 드물어 실사용 부하는 낮지만, 동시 요청이 몰릴 때 풀 고갈을 피하기 위함.
 - `PointChargeRequest`는 `@NotNull`로 null만 걸러내고(→ `COMMON_001`), 0 이하 검증은 Bean Validation이 아니라 서비스에서 직접 한다 — API 계약이 `POINT_001`이라는 도메인 전용 에러 코드를 요구하는데, Bean Validation 실패는 `GlobalExceptionHandler`에서 항상 `COMMON_001`로만 매핑되기 때문. `docs/api/point.md`의 에러 표에도 `COMMON_001`(null/누락)을 명시했다.
-- 검증 레벨: Level 1(단위)·Level 2(컨트롤러 계약)·**Level 3(락·동시성 통합, `PointServiceConcurrencyTest`)** PASS. 상세 근거는 `docs/logs/point/charge/001-charge.md`.
+- 검증 레벨: Level 1(단위)·Level 2(컨트롤러 계약)·**Level 3(락·동시성 통합, `PointServiceConcurrencyTest`)** PASS. 상세 근거는 `docs/logs/point/charge/001-charge.md`, `docs/logs/point/charge/002-concurrency-fix.md`.
 
 ## 관련 문서
 - `docs/api/point.md` · `docs/policy/point.md` · [ADR-001](../../../adr/ADR-001-포인트-동시성제어.md)
 - `docs/dev/domain/entity/design.md` (Point 시드 방식 변경 반영)
+- 이슈 [#34](https://github.com/yxejxnn/coffee-order-system/issues/34) (이 폴백 경로 동시성 구멍 해소)
