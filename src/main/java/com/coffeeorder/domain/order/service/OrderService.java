@@ -30,16 +30,15 @@ public class OrderService {
 
 	@Transactional
 	public OrderCreateResponse create(Long memberId, Long menuId, Integer quantity) {
+		int orderQuantity = (quantity != null) ? quantity : 1;
+		if (orderQuantity <= 0) {
+			throw new CoffeeOrderException(ErrorCode.INVALID_QUANTITY);
+		}
 		if (!memberRepository.existsById(memberId)) {
 			throw new CoffeeOrderException(ErrorCode.MEMBER_NOT_FOUND);
 		}
 		Menu menu = menuRepository.findById(menuId)
 				.orElseThrow(() -> new CoffeeOrderException(ErrorCode.MENU_NOT_FOUND));
-
-		int orderQuantity = (quantity != null) ? quantity : 1;
-		if (orderQuantity <= 0) {
-			throw new CoffeeOrderException(ErrorCode.INVALID_QUANTITY);
-		}
 
 		Long totalPrice = (long) menu.getPrice() * orderQuantity;
 		String orderGroupId = UUID.randomUUID().toString();
