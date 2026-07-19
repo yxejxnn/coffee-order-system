@@ -8,6 +8,7 @@
   - **상한 없음**, 1회 충전 한도 없음. (검증 최소 정책)
 - **차감(주문 결제)**:
   - 잔액이 결제금액 이상일 때만 차감. 부족하면 `INSUFFICIENT_POINT`(주문 실패, 차감 없음).
+  - **(#48) `INSUFFICIENT_POINT`는 409(Conflict) 유지, 422로 바꾸지 않는다**: 잔액 부족은 요청 형식이 잘못된 것(400, `INVALID_AMOUNT`/`INVALID_QUANTITY`류)이 아니라 "POINT 리소스의 현재 상태와 요청이 충돌"하는 경우다. 같은 이유로 409를 쓰는 `IDEMPOTENCY_KEY_CONFLICT`(재사용된 Idempotency-Key도 "현재 상태와의 충돌")와 묶어, API 전반의 상태 코드 정책을 "형식 오류=400 / 상태 충돌=409"로 일관되게 유지한다.
   - 차감액 = `unit_price(스냅샷) * quantity`.
 - **이력**: 모든 증감은 `POINT_HISTORY`에 append-only 기록(`CHARGE`/`USE`), 잔액 변경과 **동일 트랜잭션**.
 - **동시성**: 동일 회원 동시 충전·주문 시 잔액 정합성은 `POINT` 행 비관적 락으로 보장. → [ADR-001](../adr/ADR-001-포인트-동시성제어.md)
