@@ -15,7 +15,15 @@
 **멱등 마킹(SETNX) 이후 집계(ZINCRBY+EXPIRE) 실패 시 롤백**: 두 단계가 원자적이지 않으므로, 마킹 성공 후 집계가 실패하면(Redis 네트워크 오류 등) 마킹만 롤백(`DELETE`)하고 예외를 다시 던진다. 롤백 없이 두면 Kafka 재전달 시 이미 마킹된 키 때문에 "중복"으로 오판해 그 주문이 영구적으로 누락되는데, 이는 멱등이 막으려는 중복 집계보다 나쁜 실패 모드다. 롤백해도 마킹 성공 직후~롤백 사이의 하드 크래시(예외로 잡히지 않는 프로세스 종료) 구간은 여전히 남는데, 이 잔여 위험은 Lua 스크립트로 SETNX+ZINCRBY+EXPIRE를 완전히 원자화해야 없앨 수 있다 — 이 프로젝트에 Lua 스크립팅 선례가 없어 이번 이슈에서는 도입하지 않고, 위 롤백으로 실패 모드를 완화하는 선에서 마무리했다(자체 리뷰에서 발견, PR #28).
 
 ## 실패 정책
-멱등 스킵(중복 이벤트)은 실패가 아니라 정상 경로다 — INFO 로그만 남기고 정상 반환, 예외를 던지지 않으므로 Kafka 오프셋은 정상 커밋된다. Redis 자체 장애(연결 실패 등)에 대한 재시도·서킷브레이커는 이 이슈 범위 밖으로 뒀다 — [#6](../../collector/consume/design.md)의 외부 HTTP 전송과 달리 Redis는 애플리케이션과 같은 docker-compose 스택 내부 인프라라 별도 재시도 정책 없이 컨슈머 예외를 그대로 전파하도록 뒀다(Kafka가 오프셋 미커밋으로 자동 재시도). 단, 무한정 블로킹은 막기 위해 `spring.data.redis.timeout`을 3초로 설정했다(collector의 `RestClient` 타임아웃과 같은 취지).
+멱등 스킵(중복 이벤트)은 실패가 아니라 정상 경로다 — INFO 로그만 남기고 정상 반환, 예외를 던지지 않으므로 Kafka 오프셋은 정상 커밋된다.
+
+**(#41) Redis 자체 장애(연결 실패 등)에 대한 재시도·DLT**: 원래는 별도 `ErrorHandler`/DLT 설정 없이 컨슈머 예외를 그대로 전파해 Spring Kafka 기본 동작(재시도 소진 후 로그만 남기고 오프셋 커밋)에 맡겨져 있었다 — `docs/policy/popular-menu.md`가 "카운트는 정확해야 한다"고 명시한 요구사항인데, 실패 정책이 코드에도 문서에도 명시돼 있지 않은 상태였다. `collector`([#6](../../collector/consume/design.md))는 외부 HTTP 전송이라 "유실 허용"을 명시적으로 결정했지만(트레이드오프이지 방치가 아님), ranking은 정확성이 요구사항이라 같은 결정을 내릴 수 없었다.
+
+`com.coffeeorder.config.KafkaErrorHandlingConfig`에 `DefaultErrorHandler`(`DeadLetterPublishingRecoverer` + `FixedBackOff(500L, 2)`, 최초 시도 포함 총 3회)를 전역 `CommonErrorHandler` 빈으로 등록했다 — Boot의 자동구성 `ConcurrentKafkaListenerContainerFactory`가 컨텍스트의 단일 `CommonErrorHandler`를 자동으로 집어써서 `ranking-group`·`collector-group` 둘 다에 적용되지만, `collector-group`은 `CollectorClient`가 예외를 전부 내부에서 삼켜 리스너가 절대 던지지 않으므로 실질적으로는 `ranking-group`의 실패에만 영향을 준다. 재시도가 소진되면 이벤트는 조용히 사라지는 대신 `KafkaTopics.ORDER_COMPLETED_DLT`(`order-completed-dlt`) 토픽에 원본 그대로 보존된다 — 재처리는 별도 운영 작업(수동 재발행 등)으로 범위 밖에 둔다.
+
+DLT 토픽명에 `.`(점)을 쓰지 않고 `-dlt`(하이픈)를 쓴 이유: Kafka는 토픽명의 `.`/`_`를 메트릭·로그 디렉터리 이름에서 같은 문자로 접어버리는데, 대소문자 구분이 없는 파일시스템(macOS 기본 APFS)에서 이 때문에 실제로 임베디드 브로커가 죽는 충돌을 로컬에서 직접 재현했다(`docs/logs/ranking/consume/002-dlt.md` 참고).
+
+단, 무한정 블로킹은 막기 위해 `spring.data.redis.timeout`을 3초로 설정했다(collector의 `RestClient` 타임아웃과 같은 취지).
 
 ## 알려진 한계 (자체 리뷰에서 발견, 재검토 조건 포함)
 PR #28 자체 리뷰(`/code-review --comment`)에서 나온 9건 중 코드로 고친 2건(멱등 마킹 롤백, 테스트 tearDown 파괴적 삭제)을 뺀 나머지를 여기 모은다 — PR 스레드 답글에만 남기면 머지 후 다시 들여다볼 일이 없어 묻히므로, "왜 지금 안 고쳤고 언제 다시 봐야 하는지"를 코드와 함께 남는 문서에 적어둔다.
@@ -31,10 +39,11 @@ PR #28 자체 리뷰(`/code-review --comment`)에서 나온 9건 중 코드로 �
 - `com.coffeeorder.domain.ranking.consumer.RankingEventConsumer` — `@KafkaListener`.
 - `com.coffeeorder.domain.ranking.service.RankingAggregationService` — 멱등 체크 + `ZINCRBY`.
 - `com.coffeeorder.domain.ranking.RankingRedisKeys` — Redis 키 포맷 상수([#8](https://github.com/yxejxnn/coffee-order-system/issues/8)에서 `rankingKey` 재사용 예정).
+- `com.coffeeorder.config.KafkaErrorHandlingConfig`(#41) — 전역 재시도+DLT 정책. `com.coffeeorder.config.KafkaTopics.ORDER_COMPLETED_DLT`.
 - `application.yml`의 `spring.data.redis.*`(기존 [#1](../../setup/foundation/design.md) 설정 재사용, 이 이슈에서 최초로 실사용).
 
 ## 테스트
-- `RankingEventConsumerTest` — `@EmbeddedKafka` + `@MockitoBean`으로 배선만 검증(`CollectorEventConsumerTest`와 동일 패턴).
+- `RankingEventConsumerTest` — `@EmbeddedKafka` + `@MockitoBean`으로 배선만 검증(`CollectorEventConsumerTest`와 동일 패턴). `consume_publishesToDeadLetterTopic_afterRetriesExhausted`(#41)는 `aggregate()`가 항상 예외를 던지도록 mock해 재시도 소진 후 DLT 토픽에 원본이 도착하는지 검증.
 - `RankingAggregationServiceTest` — 실제 Redis(`docker compose`의 `redis`)에 대해 최초 증가·동일 `orderGroupId` 2회 전달 시 1만 증가(이슈 완료 기준)를 직접 검증. `tearDown()`은 이 테스트가 쓴 menuId만 `ZREM`으로 제거한다(같은 Redis를 공유하는 실사용/데모 데이터를 건드리지 않기 위함 — 자체 리뷰에서 발견, PR #28).
 - `RankingAggregationServiceConcurrencyTest` — `PointServiceConcurrencyTest` 패턴으로 (a) 서로 다른 `orderGroupId` N개 동시 처리 시 최종 점수 N(멀티 인스턴스 동시 증가 근사), (b) 같은 `orderGroupId` 동시 처리 시 점수 1만 증가(레이스에서도 멱등).
 - `RankingAggregationServiceUnitTest` — Mockito로 `StringRedisTemplate`을 모킹해, 멱등 마킹 후 집계가 실패하면 마킹이 롤백되는지(위 "멱등 마킹 이후 집계 실패 시 롤백" 참고)를 실제 Redis 장애 없이 결정적으로 검증한다.
