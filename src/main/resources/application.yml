@@ -13,6 +13,9 @@ spring:
       maximum-pool-size: 25
   jpa:
     hibernate:
+      # 이 과제는 운영/스테이징 프로파일 분리 없는 단일 환경이고 스키마 SSOT는 docs/db/다.
+      # update는 그 SSOT를 반영하는 로컬 개발 편의 수단이며(#45), 다중 환경으로 확장 시
+      # Flyway 같은 마이그레이션 도구로 교체가 필요하다 — 지금은 도입하지 않기로 결정.
       ddl-auto: update
     open-in-view: false
     properties:

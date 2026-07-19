@@ -23,6 +23,7 @@
   | orderCount | number | 최근 7일 주문 횟수 |
 
 ## 규칙
+- **(#47) 경로가 `RankingController`(ranking 도메인)에 있지만 `/api/menus/popular`인 이유**: 경로는 리소스(메뉴) 기준, 컨트롤러 소속은 로직 소유(ranking) 기준 — 서로 다른 축이라 의도적으로 분리했다. 상세는 [dev/ranking/popular/design](../dev/ranking/popular/design.md) 참조.
 - **최근 7일** = 조회 시점 기준 당일 포함 7개 일자 버킷의 합. → [policy/popular-menu](../policy/popular-menu.md)
 - 카운트 원천(SSOT)은 `ORDERS`. 조회는 **Redis ZSET**(일자별 버킷 union)에서 읽는다. Kafka 소비 시 `order_group_id` 멱등 처리로 **정확한 카운트** 보장. → [ADR-003](../adr/ADR-003-인기메뉴-집계전략.md)
 - 동점 시 정렬: `orderCount` 내림차순 → 같으면 `menuId` 오름차순.
