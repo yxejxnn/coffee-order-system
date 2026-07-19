@@ -55,7 +55,7 @@ curl localhost:8080/api/menus/popular
 ### 4) 테스트
 
 ```bash
-./gradlew test                        # 단위 + 통합 (인프라 기동 상태 필요)
+./gradlew test                        # 단위 + 통합 (인프라 기동 + 위 DB_* 환경변수 필요)
 sh scripts/verify-multi-instance.sh   # 2인스턴스 동시성 검증 (아래 "검증" 참고)
 ```
 
@@ -124,7 +124,7 @@ GET /api/menus/popular
 
 - **동기 REST 직접 호출을 제외한 이유**: 수집 플랫폼이 느려지거나 죽으면 그게 그대로 결제 응답 지연·실패가 된다. 부가 경로가 핵심 경로를 인질로 잡는 구조다.
 - **대가**: 커밋과 발행이 원자적이지 않아 드물게 이벤트 유실 가능성이 있다. 발행 재시도로 완화했고, 유실 0이 필요해지면 Outbox로 승격한다(아래 "제외한 것" 참고). → [ADR-002](docs/adr/ADR-002-주문이벤트-비동기전달.md)
-- 수집 플랫폼은 실제로 존재하지 않으므로 같은 앱 안의 `MockCollectorController`(`POST /mock/collector/orders`)로 대체하고 `memberId · menuId · 결제금액`을 보낸다. 전송 실패는 최대 3회 재시도(200ms 백오프) 후 ERROR 로그 — 수집은 유실이 허용되는 부가 경로로 판단했다.
+- 수집 플랫폼은 실제로 존재하지 않으므로 같은 앱 안의 `MockCollectorController`(`POST /mock/collector/orders`)로 대체하고 `memberId · menuId · 결제금액`을 보낸다. 전송 실패는 최대 3회까지 시도(재시도 사이 200ms 고정 백오프) 후 ERROR 로그 — 수집은 유실이 허용되는 부가 경로로 판단했다.
 
 ### 3. 인기 메뉴 — "정확한 주문 횟수"를 at-least-once 위에서 만든다
 
@@ -134,7 +134,7 @@ Kafka는 at-least-once라 **같은 이벤트가 두 번 올 수 있다.** 발제
 - 실패 시 표식을 롤백한다. 처음 구현은 표식을 **먼저** 찍고 `ZINCRBY`를 했는데, 그 사이에 실패하면 재전송이 "이미 처리됨"으로 보고 그 주문을 **영원히 누락**시킨다 — 막으려던 중복보다 나쁜 결과여서 자체 리뷰에서 잡아 고쳤다.
 - **일자별 버킷**(`menu:ranking:{yyyy-MM-dd}`, TTL 8일)이라 "최근 7일"이 키 7개 union으로 자연히 나오고 만료도 TTL로 끝난다. 시간대는 `Asia/Seoul` 고정.
 - **원천은 Redis가 아니라 `ORDERS`다.** Redis는 조회 fast path일 뿐이고, 유실 시 `ORDERS`로 재구축 가능하도록 `idx_created_menu` 인덱스를 마련해뒀다.
-- 집계 실패는 유실시키지 않는다 — 정확성이 요구사항이므로 collector와 달리 재시도 3회 후 **DLT(`order-completed-dlt`)**에 보존한다. → [ADR-003](docs/adr/ADR-003-인기메뉴-집계전략.md)
+- 집계 실패는 유실시키지 않는다 — 정확성이 요구사항이므로 collector와 달리, 최대 3회까지 시도(재시도 사이 500ms 백오프)한 뒤에도 실패하면 **DLT(`order-completed-dlt`)**에 보존한다. → [ADR-003](docs/adr/ADR-003-인기메뉴-집계전략.md)
 
 ### 4. 검증 — "테스트 통과"가 아니라 "실제로 2개 띄워서 확인"
 
