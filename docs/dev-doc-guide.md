@@ -15,13 +15,16 @@ docs/
 ├── dev-doc-guide.md              ← (이 문서) 개발문서 작성 가이드
 └── dev/
     ├── ongoing/                   ← 진행 중 개발문서 (전역 큐, 한눈에)
-    │   └── {작업이름}.md            예: schedule-create.md
+    │   └── {작업이름}.md            예: issue-12-schedule-create.md
+    ├── changes/                   ← 완료된 개발문서 (전역 단일 폴더, 파일명 그대로, 누적)
+    │   ├── issue-12-schedule-create.md
+    │   └── issue-15-schedule-add-repeat.md
     └── {개념}/{기능}/              예: schedule/create/
-        ├── design.md             ← 진실의 원천(SSOT) = 현재 최종 상태
-        └── changes/              ← 완료된 개발문서 (채번, 누적)
-            ├── 001-create.md
-            └── 002-add-repeat.md
+        └── design.md             ← 진실의 원천(SSOT) = 현재 최종 상태
 ```
+
+- `changes/`는 **전역 단일 폴더**다 (기능별로 나누지 않는다) — 완료된 기록은 어느 기능인지보다 "이슈 번호로 찾는다"는 접근이 더 흔해서, 기능별 폴더에 흩어놓으면 오히려 찾기 번거롭다. 파일명에 이미 `issue-N-{기능}`이 들어 있어 단일 폴더에서도 어느 기능인지 알 수 있다.
+- `design.md`(SSOT)와 `docs/logs/`(실행 로그)는 계속 **기능별 폴더**에 둔다 — "이 기능 지금 어떻게 동작해?"·"이 기능의 실행 이력은?"은 기능 단위 질문이라 흩어놓을 이유가 없다.
 
 ### "개념(concept)"으로 나누는 이유
 
@@ -40,27 +43,27 @@ docs/
   `design.md`에 **관련 코드 위치**를 적어 갭을 메운다.
 
 ### 핵심 규칙
-- **진행 중 작업 = `docs/dev/ongoing/`에 문서 한 장** (아직 번호 없음).
-- **완료되면 = 해당 기능의 `changes/`로 채번되어 이동**한다.
-- **위치가 곧 상태다**: `ongoing/`에 있으면 진행 중, `changes/`에 있으면 완료. (별도 `상태:` 필드 없음)
+- **진행 중 작업 = `docs/dev/ongoing/`에 문서 한 장** (이슈 번호로 이미 고유하게 명명, `issue-N-{기능}.md`).
+- **완료되면 = 전역 `docs/dev/changes/`로 파일명 그대로 이동**한다 (renaming/채번 없음 — ongoing 파일명이 이미 고유해 추가 번호가 불필요).
+- **위치가 곧 상태다**: `ongoing/`에 있으면 진행 중, `docs/dev/changes/`에 있으면 완료. (별도 `상태:` 필드 없음)
 - **개념·기능 = 폴더**로 표현한다 (파일명에 이름을 반복하지 않는다).
   - `docs/dev/schedule/create/design.md` ⭕ / `docs/dev/schedule/design-schedule-create.md` ❌
-- 각 기능 폴더에는 **`design.md` 1개 + `changes/` 1개**가 짝으로 있다.
+- 각 기능 폴더에는 **`design.md` 1개**만 있다. 완료 기록(`changes/`)은 기능 폴더가 아니라 **전역 `docs/dev/changes/`** 하나에 모인다.
 
 ---
 
 ## ongoing/ — 진행 중 개발문서 (전역 큐)
 
-- 새 작업을 시작하면(Plan 단계) **`docs/dev/ongoing/{작업이름}.md`**를 만든다.
+- 새 작업을 시작하면(Plan 단계) **`docs/dev/ongoing/issue-{N}-{기능}.md`**를 만든다 (GitHub 이슈 번호로 고유하게 명명).
 - 이 폴더 하나에 **모든 진행 중 작업이 모인다** → `ls docs/dev/ongoing/`로 조직 전체 업무량을 한눈에 본다.
-- 아직 번호를 붙이지 않는다 (번호는 완료 시 changes/로 들어갈 때 부여).
+- 이슈 번호로 이미 고유하므로 완료 시에도 **파일명을 바꾸지 않는다** (아래 changes/ 참고).
 
 ### ongoing 문서 템플릿
 
 ```markdown
 # 일정 생성 기능
 
-대상: schedule/create        <!-- 완료 시 이 기능의 changes/로 이동 -->
+대상: schedule/create        <!-- 완료 시 docs/dev/changes/로 이동 -->
 이슈: #12                     <!-- 연결된 GitHub Issue (Plan에서 gh issue create) -->
 담당: 홍길동                  <!-- 누가 작업 중인지 (가시화용) -->
 
@@ -111,13 +114,14 @@ docs/
 
 ---
 
-## changes/ — 완료된 개발문서 (채번)
+## docs/dev/changes/ — 완료된 개발문서 (전역 단일 폴더)
 
-- 작업이 완료되면(Evaluate 통과) `ongoing/`의 문서를 해당 기능의 `changes/`로 **옮긴다**.
-- **채번 규칙**: 이동 시점에 대상 기능 `changes/`의 **최대 번호 + 1**을 붙인다. 첫 작업이면 `001`.
-  - 예: `ongoing/schedule-create.md` → `docs/dev/schedule/create/changes/001-create.md`
+- 작업이 완료되면(Evaluate 통과) `ongoing/`의 문서를 **전역 `docs/dev/changes/`로 파일명 그대로 옮긴다** (기능별 폴더로 나누지 않는다).
+  - 예: `ongoing/issue-12-schedule-create.md` → `docs/dev/changes/issue-12-schedule-create.md`
+  - **채번하지 않는다** — ongoing 파일명이 이미 이슈 번호로 고유하므로 별도 번호 부여가 불필요하고, 이름이 바뀌면 이슈와의 연결이 헷갈린다.
+  - **기능별로 나누지 않는 이유**: 완료 기록은 "어느 기능인지"보다 "이슈 번호로 찾는다"는 접근이 더 흔하다. 파일명에 이미 `issue-N-{기능}`이 들어 있어 단일 폴더에서도 어느 기능인지 바로 알 수 있고, 여러 기능에 걸친 이슈(cross-cutting)도 폴더 하나를 고를 필요가 없다.
 - 이동은 **`mv`**를 쓴다 (`git mv`는 아직 커밋 안 된 untracked 파일에선 실패한다). git은 삭제+추가로 보지만 문서 이동이라 무방하다.
-- changes/ 문서는 완료된 기록이므로 이후 **고치지 않는다** (누적 아카이브).
+- 완료 문서는 완료된 기록이므로 이후 **고치지 않는다** (누적 아카이브).
 
 ---
 
@@ -128,12 +132,11 @@ docs/
 | **Clarify** | 미결정 질문 → `docs/open-questions.md`, 구조적 결정 → `docs/adr/` ADR 초안 |
 | **Plan** | **GitHub Issue 생성**(`gh issue create`) + `docs/dev/ongoing/{작업}.md` 생성 (대상·**이슈 #N**·담당·배경·설계·태스크·평가기준·검증레벨) |
 | **게이트 A (계획 승인)** | 이슈 + 계획 + 명세 + ADR을 사용자가 승인 |
-| **Generate** | 승인된 문서대로 구현 |
-| **Push+PR / 게이트 B** | feature push → PR(base: dev, `Closes #N`) → **Claude 자체 리뷰·수정** → 머지 직전 멈춤 → **사람 최종 검토·merge** (`docs/workflow/issue-pr-guide.md`) |
-| **merge 후** | ① `design.md` 작성/갱신(SSOT, 필수) → ② ongoing 문서를 `changes/00X-*.md`로 **채번 이동** → ③ **feature 브랜치 삭제**(로컬+원격) |
+| **Generate → Evaluate 통과 후** | 구현 + **`design.md` 작성/갱신(SSOT, 필수)** — 코드와 같은 작업 단위로, **push 전에** 끝내 둔다 |
+| **Push+PR / 게이트 B** | design.md를 포함해 feature push → PR(base: dev, `Closes #N`) → **Claude 자체 리뷰·수정**(코드뿐 아니라 design.md도 리뷰 대상) → **ongoing 문서를 전역 `docs/dev/changes/`로 파일명 그대로 이동**(같은 feature 브랜치, 머지 전) → 머지 직전 멈춤 → **사람 최종 검토·merge** (`docs/workflow/issue-pr-guide.md`) |
+| **merge 후** | **feature 브랜치 삭제**(로컬+원격)만 남는다 |
 
-> Evaluate 통과 후 design.md 갱신 + ongoing→changes 이동을 빼먹지 않는다.
-> 둘 다 해야 "진행 중 큐"와 "진실의 원천"이 최신 상태를 유지한다.
+> **design.md·ongoing→changes 이동 둘 다 PR에 포함**한다 — 머지 후로 미루지 않는다. `main`·`dev`는 직접 커밋·push가 훅으로 막혀 있어서, "머지 후"에 하려고 하면 파일 하나 옮기려고 새 feature 브랜치+PR을 또 만들어야 한다 — 그 오버헤드를 피하려고 게이트 B 이전(같은 PR)에 끝낸다(2026-07-17 사용자 정정: "머지 하면 니 문서 이동하고 또 pr 올릴 거잖아... 작업이 끝났으면 알아서 문서를 옮기라고"). 사람이 게이트 B에서 코드·design.md·changes 이동을 한 번에 검토하고, merge 후에는 브랜치 삭제만 하면 끝난다.
 
 ---
 
@@ -153,7 +156,7 @@ grep -rl "담당: 홍길동" docs/dev/ongoing/       # 특정 담당자의 진�
 ## 요약 (한눈에)
 
 1. 새 작업(생성/유지보수) → `docs/dev/ongoing/{작업}.md` 생성 (번호 없음, 담당 표기)
-2. 승인 → 개발 → Evaluate 통과 시:
-   - 대상 기능 `design.md` 갱신(SSOT)
-   - ongoing 문서를 그 기능 `changes/`로 **채번 이동**(001, 002…)
-3. 진행 중 현황은 `ls docs/dev/ongoing/`로 한눈에
+2. 승인 → 개발 → Evaluate 통과 시(push 전): 대상 기능 `design.md` 갱신(SSOT), PR에 포함
+3. **머지 전**(같은 feature 브랜치, 자체 리뷰 이후): ongoing 문서를 전역 `docs/dev/changes/`로 **파일명 그대로 이동**(채번 없음) → PR에 포함
+4. PR merge 후: **feature 브랜치 삭제**만 남는다
+5. 진행 중 현황은 `ls docs/dev/ongoing/`로 한눈에

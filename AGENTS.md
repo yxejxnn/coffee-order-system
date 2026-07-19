@@ -3,7 +3,7 @@
 이 저장소에서 코딩 에이전트(Claude Code, Codex 등)가 따르는 **공통 작업 방식**이다.
 **세부 규칙은 각 문서(SSOT)에 있고, 이 파일은 흐름과 "언제 어디를 볼지"만 가리킨다.** 규칙이 충돌하면 원천 문서가 이긴다.
 
-> 재활용 하네스 틀이다. 새 프로젝트 적용법은 `README.md`, Claude Code 특화는 `CLAUDE.md`.
+> 프로젝트 자체(설계·실행법)는 `README.md`, Claude Code 특화 규칙은 `CLAUDE.md`.
 
 ## 실행 흐름
 
@@ -27,7 +27,7 @@ Clarify → Plan(이슈 쪼개기) →[게이트 A: 승인]→ Generate → Eval
 - 이름: `coffee-order-system` (`com.coffeeorder`)
 - 도메인 / 목적: 다수 서버·다수 인스턴스 환경에서도 정합성을 지키는 **커피 주문 시스템**(K사 서버 개발 사전과제). 메뉴 조회 · 포인트 충전 · 주문/결제(+데이터 수집 플랫폼 전송) · 최근 7일 인기 메뉴 조회.
 - 스택: Java 17(소스 레벨) / JDK 21(런타임) · Spring Boot 4.1.0 · Gradle(Groovy) · MySQL · Redis · Kafka(단일 브로커, KRaft, `spring-kafka` 4.x) · Docker Compose.
-- 채점 핵심: 정답이 아니라 **동시성·데이터 일관성·확장성 선택의 근거**를 설득하는 것. 설계 근거는 `docs/adr/`가 원천이며, 구현 전 **튜터 설계 점검**을 거친다.
+- 채점 핵심: 정답이 아니라 **동시성·데이터 일관성·확장성 선택의 근거**를 설득하는 것. 설계 근거는 `docs/adr/`가 원천이다.
 
 ## 명령어
 
@@ -37,6 +37,8 @@ wrapper(`./gradlew`) 사용, 전역 gradle 금지. (Maven이면 교체)
 ./gradlew build   # 빌드+테스트   ./gradlew test    # 테스트만
 ./gradlew compileJava  # 컴파일 검증   ./gradlew bootRun  # 앱 실행
 ```
+
+> ⚠️ **`./gradlew test`/`build`는 실제 MySQL·Redis가 필요하다** (엔티티/리포지토리 계층부터 `@DataJpaTest`가 임베디드 DB 없이 실제 datasource를 쓰고, [#7](https://github.com/yxejxnn/coffee-order-system/issues/7)부터 랭킹 집계 테스트가 실제 Redis에 붙는다 — Kafka는 `@EmbeddedKafka`로 대체되므로 별도 기동 불필요). 먼저 `docker compose up -d mysql redis` 후 `DB_USERNAME`/`DB_PASSWORD`(`.env`의 `MYSQL_ROOT_PASSWORD`)를 셸 환경변수로 export하고 실행한다 — `.env`는 docker compose만 읽으므로 Gradle 프로세스엔 별도로 넘겨야 한다.
 
 ## 컨텍스트 라우터
 

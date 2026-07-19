@@ -1,0 +1,59 @@
+package com.coffeeorder.config;
+
+import com.coffeeorder.domain.member.entity.Member;
+import com.coffeeorder.domain.member.repository.MemberRepository;
+import com.coffeeorder.domain.menu.entity.Menu;
+import com.coffeeorder.domain.menu.repository.MenuRepository;
+import com.coffeeorder.domain.point.entity.Point;
+import com.coffeeorder.domain.point.repository.PointRepository;
+import java.util.List;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.context.annotation.Profile;
+import org.springframework.stereotype.Component;
+
+/**
+ * 회원가입/메뉴등록 API가 없는 발제 범위상, 초기 구동용 시드를 코드로 넣는다.
+ * 이미 데이터가 있으면(재기동) 다시 넣지 않는다.
+ *
+ * <p>운영 환경({@code prod} 프로파일)에서는 등록되지 않는다 — 데모/과제용 하드코딩 시드 데이터를
+ * 운영 아티팩트에 그대로 실어 자동 실행되게 두지 않기 위함이다(#40).
+ */
+@Component
+@Profile("!prod")
+public class DataSeeder implements ApplicationRunner {
+
+	private final MemberRepository memberRepository;
+	private final MenuRepository menuRepository;
+	private final PointRepository pointRepository;
+
+	public DataSeeder(MemberRepository memberRepository, MenuRepository menuRepository, PointRepository pointRepository) {
+		this.memberRepository = memberRepository;
+		this.menuRepository = menuRepository;
+		this.pointRepository = pointRepository;
+	}
+
+	@Override
+	public void run(ApplicationArguments args) {
+		if (memberRepository.count() == 0) {
+			List<Member> members = memberRepository.saveAll(List.of(
+					new Member("홍길동"),
+					new Member("김민준"),
+					new Member("이서연")
+			));
+			pointRepository.saveAll(members.stream()
+					.map(member -> new Point(member.getId()))
+					.toList());
+		}
+
+		if (menuRepository.count() == 0) {
+			menuRepository.saveAll(List.of(
+					new Menu("아메리카노", 4500),
+					new Menu("카페라떼", 5000),
+					new Menu("카푸치노", 5000),
+					new Menu("바닐라라떼", 5500),
+					new Menu("콜드브루", 5000)
+			));
+		}
+	}
+}

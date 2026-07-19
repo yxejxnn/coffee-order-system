@@ -1,0 +1,55 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '4.1.0'
+	id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'com.coffeeorder'
+version = '0.0.1-SNAPSHOT'
+
+java {
+	sourceCompatibility = JavaVersion.VERSION_17
+	targetCompatibility = JavaVersion.VERSION_17
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-restclient'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+	implementation 'org.springframework.boot:spring-boot-starter-kafka'
+
+	runtimeOnly 'com.mysql:mysql-connector-j'
+
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+
+	testCompileOnly 'org.projectlombok:lombok'
+	testAnnotationProcessor 'org.projectlombok:lombok'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
+	testImplementation 'org.springframework.kafka:spring-kafka-test'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+	useJUnitPlatform {
+		excludeTags 'multi-instance'
+	}
+}
+
+/*
+ * 이슈 #9: MultiInstanceVerificationTest는 이미 떠 있는 앱 인스턴스 2개가 전제라
+ * 기본 test 스위트/CI에 포함하지 않는다. scripts/verify-multi-instance.sh가 이 태스크를 부른다.
+ */
+tasks.register('verifyMultiInstance', Test) {
+	useJUnitPlatform {
+		includeTags 'multi-instance'
+	}
+	outputs.upToDateWhen { false }
+}

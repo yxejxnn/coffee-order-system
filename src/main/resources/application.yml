@@ -1,0 +1,49 @@
+spring:
+  application:
+    name: coffee-order-system
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:coffee_order}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      # Point 최초 생성(REQUIRES_NEW, PointBootstrapService)은 같은 스레드가 순간적으로 커넥션 2개를
+      # 동시에 쥔다(바깥 트랜잭션 보류분 + 중첩 트랜잭션분). 기본값(10)이면 동시 요청 10개만 몰려도 이
+      # 드문 경로만으로 풀이 정확히 바닥나므로, 최소 필요량(10×2=20)에 여유분(+5)을 더한다.
+      maximum-pool-size: 25
+  jpa:
+    hibernate:
+      # 이 과제는 운영/스테이징 프로파일 분리 없는 단일 환경이고 스키마 SSOT는 docs/db/다.
+      # update는 그 SSOT를 반영하는 로컬 개발 편의 수단이며(#45), 다중 환경으로 확장 시
+      # Flyway 같은 마이그레이션 도구로 교체가 필요하다 — 지금은 도입하지 않기로 결정.
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 3000
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
+      properties:
+        retries: 3
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JacksonJsonDeserializer
+      auto-offset-reset: earliest
+      properties:
+        spring.json.trusted.packages: com.coffeeorder.domain.order.event
+        spring.json.value.default.type: com.coffeeorder.domain.order.event.OrderCompletedEvent
+
+collector:
+  api:
+    base-url: ${COLLECTOR_API_BASE_URL:http://localhost:${server.port}}
+
+server:
+  port: ${SERVER_PORT:8080}

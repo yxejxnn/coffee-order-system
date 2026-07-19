@@ -7,9 +7,10 @@
 - **결과**: 상위 **3개**. 3개 미만이면 있는 만큼.
 - **정렬**: 주문 횟수 내림차순 → 동점이면 `menuId` 오름차순(결정적 순서).
 - **정확성**: 카운트는 정확해야 한다(발제). 이벤트 소비 시 `order_group_id`로 **멱등 처리**해 Kafka 재전송 중복 집계를 막는다. → [ADR-003](../adr/ADR-003-인기메뉴-집계전략.md)
+- **실패 정책(#41)**: Redis 장애 등으로 집계에 반복 실패하는 이벤트는 조용히 유실시키지 않는다 — 정확성이 요구사항이므로 collector(데이터 수집 플랫폼 전송, 유실 허용으로 별도 결정)와 다른 정책을 쓴다. 경계 있는 재시도(최대 3회) 후에도 실패하면 Dead Letter Topic(`order-completed-dlt`)에 보존한다. 상세: `docs/dev/ranking/consume/design.md`.
 
 ## 근거 / 배경
-- 카운트의 원천(SSOT)은 `ORDERS`, 조회 성능을 위해 Redis ZSET(일자 버킷)을 fast path로 둔다. Redis 유실 시 `ORDERS`로 재구축 가능.
+- 카운트의 원천(SSOT)은 `ORDERS`, 조회 성능을 위해 Redis ZSET(일자 버킷)을 fast path로 둔다. Redis 유실 시 `ORDERS`로 재구축 가능한 구조(`idx_created_menu` 인덱스)만 마련해두었고, 실제 재구축 집계 쿼리는 미구현(#36) — 필요해지는 시점에 구현. → [ADR-003](../adr/ADR-003-인기메뉴-집계전략.md)
 - "주문 횟수" 정의(건수 vs 수량)는 발제 문구를 건수로 해석. → [open-questions](../open-questions.md)
 
 ## 적용 대상
