@@ -5,6 +5,7 @@ import com.coffeeorder.domain.collector.mock.MockCollectorController;
 import com.coffeeorder.domain.order.event.OrderCompletedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -15,8 +16,9 @@ import org.springframework.web.client.RestClient;
  * {@link OrderCompletedEvent}를 그대로 넘겨받아, {@link CollectorTransmitRequest}로 변환한 뒤
  * {@link MockCollectorController#ORDERS_PATH}로 {@code POST} 요청을 보낸다.
  *
- * <p><b>실패 정책</b>: 최대 {@value #MAX_ATTEMPTS}회 시도하고, 재시도 간 지연은 두지 않는다(부가 경로라
- * backoff 없이 단순하게 처리). {@value #MAX_ATTEMPTS}회 모두 실패하면 예외를 호출자(Kafka 리스너)로
+ * <p><b>실패 정책</b>: 최대 {@value #MAX_ATTEMPTS}회 시도하고, 재시도 사이에 {@value #RETRY_BACKOFF_MS}ms
+ * 고정 backoff를 둔다(연결 거부처럼 즉시 실패하는 경우 지연 없이 재시도하면 3회가 사실상 한 순간에
+ * 소진돼 재시도의 의미가 없기 때문). {@value #MAX_ATTEMPTS}회 모두 실패하면 예외를 호출자(Kafka 리스너)로
  * 전파하지 않고 ERROR 로그만 남긴 뒤 조용히 끝난다 — 그래야 Kafka 오프셋이 정상 커밋되어 이 메시지를
  * 다시 소비하려 들지 않는다(재전달·별도 보관 없음, 유실 허용). 인기 메뉴 집계 컨슈머와 달리 멱등 처리도
  * 하지 않는데, 외부 전송은 중복 호출이 정확성에 영향을 주지 않기 때문이다.
@@ -37,6 +39,10 @@ public class CollectorClient {
 	/** 전송 실패 시 최대 시도 횟수(최초 시도 포함). Kafka producer의 {@code retries: 3}과 톤을 맞췄다. */
 	private static final int MAX_ATTEMPTS = 3;
 
+	/** 재시도 사이 고정 backoff(ms). 부가 경로라 짧게 두되, 즉시 재시도로 인한 무의미한 소진은 막는다. */
+	private static final long RETRY_BACKOFF_MS = 200L;
+
+	@Qualifier("collectorRestClient")
 	private final RestClient restClient;
 
 	/**
@@ -74,11 +80,33 @@ public class CollectorClient {
 				if (attempt == MAX_ATTEMPTS) {
 					log.error("데이터 수집 플랫폼 전송 실패 (orderGroupId={}, {}회 시도 모두 실패)",
 							event.orderGroupId(), MAX_ATTEMPTS, e);
-				} else {
-					log.warn("데이터 수집 플랫폼 전송 재시도 (orderGroupId={}, attempt={})",
-							event.orderGroupId(), attempt, e);
+					return;
+				}
+				log.warn("데이터 수집 플랫폼 전송 재시도 (orderGroupId={}, attempt={})",
+						event.orderGroupId(), attempt, e);
+				if (!sleepBackoff()) {
+					return;
 				}
 			}
+		}
+	}
+
+	/**
+	 * 재시도 사이 {@value #RETRY_BACKOFF_MS}ms만큼 대기한다.
+	 *
+	 * <p>대기 중 인터럽트되면(예: 컨슈머 스레드 종료) 남은 재시도를 포기하도록 인터럽트 상태를
+	 * 복원하고 {@code false}를 반환한다 — 이 클래스는 어떤 경우에도 예외를 던지지 않는다는 계약을
+	 * 유지하기 위해서다.
+	 *
+	 * @return 정상 대기했으면 {@code true}, 인터럽트로 중단됐으면 {@code false}
+	 */
+	private boolean sleepBackoff() {
+		try {
+			Thread.sleep(RETRY_BACKOFF_MS);
+			return true;
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			return false;
 		}
 	}
 }
