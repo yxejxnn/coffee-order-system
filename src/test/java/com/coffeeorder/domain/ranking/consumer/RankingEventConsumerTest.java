@@ -22,7 +22,6 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
@@ -100,6 +99,5 @@ class RankingEventConsumerTest {
 			}
 		}
 		assertThat(found).as("재시도 소진 후 원본 이벤트가 DLT 토픽에 도착해야 한다").isTrue();
-		Mockito.clearInvocations(rankingAggregationService);
 	}
 }

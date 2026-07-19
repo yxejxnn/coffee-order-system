@@ -1,32 +1,43 @@
 package com.coffeeorder.config;
 
+import org.springframework.boot.kafka.autoconfigure.ConcurrentKafkaListenerContainerFactoryConfigurer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
+import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaOperations;
-import org.springframework.kafka.listener.CommonErrorHandler;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.util.backoff.FixedBackOff;
 
 /**
- * 모든 {@code @KafkaListener}에 공통으로 적용되는 재시도·DLT 정책.
+ * {@code ranking-group}({@link com.coffeeorder.domain.ranking.consumer.RankingEventConsumer}) 전용
+ * 재시도·DLT 정책.
  *
- * <p>Spring Boot가 자동구성하는 {@code ConcurrentKafkaListenerContainerFactory}는 컨텍스트에 있는
- * 단일 {@link CommonErrorHandler} 빈을 자동으로 집어써서, 별도 팩토리 커스터마이징 없이
- * {@code ranking-group}·{@code collector-group} 리스너 모두에 적용된다.
+ * <p>이 정책은 인기 메뉴 집계의 정확성 요구(#41) 때문에 필요한 것으로, ranking 도메인 고유의 결정이다.
+ * 그래서 {@link org.springframework.kafka.listener.CommonErrorHandler}를 컨텍스트에 노출되는 공용
+ * {@code @Bean}으로 만들지 않고, 이 전용 {@link ConcurrentKafkaListenerContainerFactory}(빈 이름
+ * {@code rankingKafkaListenerContainerFactory}) 안에서만 구성한다 — 그래야 Spring Boot의 기본
+ * 자동구성 팩토리(다른 {@code @KafkaListener}가 쓰는 쪽, 지금은 {@code collector-group})가 이 정책을
+ * 암묵적으로 상속받지 않는다. {@code collector-group}은 {@code CollectorClient}가 예외를 삼켜 지금은
+ * 이 정책이 있어도 없어도 차이가 없지만, 향후 세 번째 {@code @KafkaListener}가 추가돼도 이 리스너가
+ * {@code containerFactory}를 명시하지 않는 한 이 정책의 영향을 받지 않는다(자체 리뷰에서 발견 — 전역
+ * 빈으로 뒀을 때의 altitude 문제).
  *
- * <p>{@code collector-group}({@link com.coffeeorder.domain.collector.consumer.CollectorEventConsumer})은
- * {@code CollectorClient}가 예외를 전부 내부에서 삼켜 리스너가 절대 던지지 않으므로, 이 설정은
- * 실질적으로 {@code ranking-group}({@link com.coffeeorder.domain.ranking.consumer.RankingEventConsumer})의
- * 실패(예: Redis 장애)에만 적용된다 — 재시도를 몇 번 안에서 끝내고, 그래도 실패하면 이벤트를 조용히
- * 버리는 대신 {@link KafkaTopics#ORDER_COMPLETED_DLT}로 보존한다(#41).
+ * @see com.coffeeorder.domain.ranking.consumer.RankingEventConsumer
  */
 @Configuration
 public class KafkaErrorHandlingConfig {
 
 	@Bean
-	public CommonErrorHandler kafkaErrorHandler(KafkaOperations<Object, Object> kafkaOperations) {
+	public ConcurrentKafkaListenerContainerFactory<Object, Object> rankingKafkaListenerContainerFactory(
+			ConcurrentKafkaListenerContainerFactoryConfigurer configurer,
+			ConsumerFactory<Object, Object> kafkaConsumerFactory,
+			KafkaOperations<Object, Object> kafkaOperations) {
+		ConcurrentKafkaListenerContainerFactory<Object, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
+		configurer.configure(factory, kafkaConsumerFactory);
 		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(kafkaOperations);
-		return new DefaultErrorHandler(recoverer, new FixedBackOff(500L, 2));
+		factory.setCommonErrorHandler(new DefaultErrorHandler(recoverer, new FixedBackOff(500L, 2)));
+		return factory;
 	}
 }

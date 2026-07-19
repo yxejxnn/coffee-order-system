@@ -58,10 +58,12 @@ public class CollectorClient {
 			return;
 		}
 
-		CollectorTransmitRequest request = CollectorTransmitRequest.from(event);
-
 		for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
 			try {
+				// 요청 변환도 시도 루프 안에서 한다 — 이 메서드는 어떤 경우에도 예외를 던지지 않는
+				// 계약이라, 나중에 CollectorTransmitRequest.from에 검증 로직이 추가돼도 그 실패가
+				// 이 계약을 깨고 호출자(Kafka 리스너)로 새어나가지 않도록 방어한다(자체 리뷰에서 발견).
+				CollectorTransmitRequest request = CollectorTransmitRequest.from(event);
 				restClient.post()
 						.uri(MockCollectorController.ORDERS_PATH)
 						.body(request)

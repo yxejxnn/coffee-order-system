@@ -23,7 +23,8 @@ public class RankingEventConsumer {
 
 	private final RankingAggregationService rankingAggregationService;
 
-	@KafkaListener(topics = KafkaTopics.ORDER_COMPLETED, groupId = GROUP_ID)
+	@KafkaListener(topics = KafkaTopics.ORDER_COMPLETED, groupId = GROUP_ID,
+			containerFactory = "rankingKafkaListenerContainerFactory")
 	public void consume(OrderCompletedEvent event) {
 		rankingAggregationService.aggregate(event);
 	}
