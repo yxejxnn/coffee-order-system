@@ -9,7 +9,7 @@
 - 받는 쪽 `MockCollectorController`는 페이로드를 로그로 남기고 200만 반환하는 순수 Mock이다.
 
 ## 실패 정책
-최대 3회 시도(프로듀서 `retries: 3`과 동일 톤 — [ADR-002](../../../adr/ADR-002-주문이벤트-비동기전달.md)), 재시도 간 지연 없음. 3회 모두 실패하면 예외를 전파하지 않고 ERROR 로그만 남기며 종료한다 — Kafka 오프셋은 정상 커밋되어 재전달·별도 보관은 하지 않는다(부가 경로라 유실 허용). 랭킹 집계([#7](https://github.com/yxejxnn/coffee-order-system/issues/7))와 달리 멱등 처리는 하지 않는다 — 외부 전송은 중복 호출이 정확성에 영향을 주지 않기 때문이다.
+최대 3회 시도(프로듀서 `retries: 3`과 동일 톤 — [ADR-002](../../../adr/ADR-002-주문이벤트-비동기전달.md)), 재시도 사이 **200ms 고정 backoff**(#44 — 지연 없이 즉시 재시도하면 연결 거부처럼 즉시 실패하는 경우 3회가 한 순간에 소진돼 재시도 의미가 없다는 지적을 반영). 3회 모두 실패하면 예외를 전파하지 않고 ERROR 로그만 남기며 종료한다 — Kafka 오프셋은 정상 커밋되어 재전달·별도 보관은 하지 않는다(부가 경로라 유실 허용). 랭킹 집계([#7](https://github.com/yxejxnn/coffee-order-system/issues/7))와 달리 멱등 처리는 하지 않는다 — 외부 전송은 중복 호출이 정확성에 영향을 주지 않기 때문이다.
 
 ## 관련 코드 위치
 - `com.coffeeorder.domain.collector.consumer.CollectorEventConsumer` — `@KafkaListener`.
