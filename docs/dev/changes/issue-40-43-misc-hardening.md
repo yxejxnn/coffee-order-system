@@ -15,10 +15,14 @@
 ## 관련 결정·질문
 - 없음(둘 다 완료조건이 명확한 하드닝, 별도 트레이드오프 논쟁 없음).
 
+## 자체 리뷰에서 발견·수정한 문제
+`docs/dev/setup/foundation/design.md`가 이번 변경으로 사실과 어긋나게 됨을 발견 — ①"실패: ... `error(String code, String message)`" 문구가 이번에 제거한 오버로드를 여전히 계약처럼 문서화하고 있었고, ②"Lombok: 공통 클래스(`ApiResponse`, ...)는 ... `@Getter` 사용"도 `ApiResponse`가 record로 바뀐 지금은 틀림. 둘 다 수정(오버로드 문구 삭제, `ApiResponse`는 record·Lombok 미사용으로 갱신) — 이 프로젝트가 #36 배치에서 다뤘던 "문서가 약속한 것과 코드가 다름" 문제와 같은 범주라 그냥 넘기지 않고 고쳤다.
+
 ## 태스크
 - [x] `MockCollectorController`, `DataSeeder`에 `@Profile("!prod")` 추가
 - [x] `ApiResponse`를 record로 전환 + `error(String, String)` 제거
 - [x] 6개 테스트 파일 접근자 호출 갱신 + `ApiResponseTest`의 미사용 오버로드 테스트 삭제
+- [x] (자체 리뷰 발견) `docs/dev/setup/foundation/design.md`의 `ApiResponse` 관련 문구 갱신(제거된 오버로드·Lombok→record)
 
 ## 평가(통과) 기준
 - `./gradlew test --tests "*ApiResponseTest*" --tests "*GlobalExceptionHandlerTest*" --tests "*OrderControllerTest*" --tests "*RankingControllerTest*" --tests "*PointControllerTest*" --tests "*MenuControllerTest*" --tests "*DataSeederTest*"` 전부 PASS(회귀 없음, `ApiResponseTest`는 계획대로 5→4건).
