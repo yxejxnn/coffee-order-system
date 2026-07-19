@@ -30,10 +30,10 @@ class OrderControllerTest {
 
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
 		assertThat(response.getBody()).isNotNull();
-		assertThat(response.getBody().getCode()).isEqualTo("SUCCESS");
-		assertThat(response.getBody().getData().orderGroupId()).isEqualTo("group-uuid");
-		assertThat(response.getBody().getData().totalPrice()).isEqualTo(4500L);
-		assertThat(response.getBody().getData().balance()).isEqualTo(10000L);
+		assertThat(response.getBody().code()).isEqualTo("SUCCESS");
+		assertThat(response.getBody().data().orderGroupId()).isEqualTo("group-uuid");
+		assertThat(response.getBody().data().totalPrice()).isEqualTo(4500L);
+		assertThat(response.getBody().data().balance()).isEqualTo(10000L);
 	}
 
 	@Test
