@@ -29,8 +29,8 @@ class PointControllerTest {
 
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(response.getBody()).isNotNull();
-		assertThat(response.getBody().getCode()).isEqualTo("SUCCESS");
-		assertThat(response.getBody().getData().memberId()).isEqualTo(1L);
-		assertThat(response.getBody().getData().balance()).isEqualTo(8000L);
+		assertThat(response.getBody().code()).isEqualTo("SUCCESS");
+		assertThat(response.getBody().data().memberId()).isEqualTo(1L);
+		assertThat(response.getBody().data().balance()).isEqualTo(8000L);
 	}
 }

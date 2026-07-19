@@ -25,8 +25,8 @@ class GlobalExceptionHandlerTest {
 
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
 		assertThat(response.getBody()).isNotNull();
-		assertThat(response.getBody().getCode()).isEqualTo("MEMBER_001");
-		assertThat(response.getBody().getMessage()).isEqualTo(ErrorCode.MEMBER_NOT_FOUND.getMessage());
+		assertThat(response.getBody().code()).isEqualTo("MEMBER_001");
+		assertThat(response.getBody().message()).isEqualTo(ErrorCode.MEMBER_NOT_FOUND.getMessage());
 	}
 
 	@Test
@@ -37,7 +37,7 @@ class GlobalExceptionHandlerTest {
 
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
 		assertThat(response.getBody()).isNotNull();
-		assertThat(response.getBody().getCode()).isEqualTo("COMMON_003");
+		assertThat(response.getBody().code()).isEqualTo("COMMON_003");
 	}
 
 	@Test
@@ -49,7 +49,7 @@ class GlobalExceptionHandlerTest {
 
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
 		assertThat(response.getBody()).isNotNull();
-		assertThat(response.getBody().getCode()).isEqualTo("COMMON_001");
+		assertThat(response.getBody().code()).isEqualTo("COMMON_001");
 	}
 
 	@Test
@@ -63,7 +63,7 @@ class GlobalExceptionHandlerTest {
 
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
 		assertThat(response.getBody()).isNotNull();
-		assertThat(response.getBody().getCode()).isEqualTo("COMMON_001");
+		assertThat(response.getBody().code()).isEqualTo("COMMON_001");
 	}
 
 	@Test
@@ -72,6 +72,6 @@ class GlobalExceptionHandlerTest {
 
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
 		assertThat(response.getBody()).isNotNull();
-		assertThat(response.getBody().getCode()).isEqualTo("COMMON_002");
+		assertThat(response.getBody().code()).isEqualTo("COMMON_002");
 	}
 }

@@ -2,6 +2,7 @@ package com.coffeeorder.domain.collector.mock;
 
 import com.coffeeorder.domain.collector.dto.CollectorTransmitRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -21,10 +22,14 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>외부 데이터 수집 플랫폼 흉내이므로 우리 API 응답 규약({@code ApiResponse<T>})을 따르지 않는다
  * — 실제 외부 시스템이 우리 응답 봉투를 알 리 없기 때문이다(Plan 단계에서 승인된 의도적 예외).
  *
+ * <p>운영 환경({@code prod} 프로파일)에서는 등록되지 않는다 — 실제 존재하지 않는 외부 시스템을
+ * 대신하는 데모용 엔드포인트를 운영 아티팩트에 그대로 열어두지 않기 위함이다(#40).
+ *
  * @see com.coffeeorder.domain.collector.client.CollectorClient
  */
 @Slf4j
 @RestController
+@Profile("!prod")
 public class MockCollectorController {
 
 	/** 이 Mock 엔드포인트의 경로. {@link com.coffeeorder.domain.collector.client.CollectorClient}가 그대로 참조한다. */

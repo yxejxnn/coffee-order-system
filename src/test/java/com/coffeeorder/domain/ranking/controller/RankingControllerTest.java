@@ -31,8 +31,8 @@ class RankingControllerTest {
 
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(response.getBody()).isNotNull();
-		assertThat(response.getBody().getCode()).isEqualTo("SUCCESS");
-		assertThat(response.getBody().getData())
+		assertThat(response.getBody().code()).isEqualTo("SUCCESS");
+		assertThat(response.getBody().data())
 				.extracting(PopularMenuResponse::rank, PopularMenuResponse::menuId, PopularMenuResponse::name, PopularMenuResponse::orderCount)
 				.containsExactly(tuple(1, 2L, "카페라떼", 128L));
 	}
@@ -45,6 +45,6 @@ class RankingControllerTest {
 				new RankingController(rankingQueryService).getPopularMenus();
 
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-		assertThat(response.getBody().getData()).isEmpty();
+		assertThat(response.getBody().data()).isEmpty();
 	}
 }

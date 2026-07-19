@@ -30,8 +30,8 @@ class MenuControllerTest {
 
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(response.getBody()).isNotNull();
-		assertThat(response.getBody().getCode()).isEqualTo("SUCCESS");
-		assertThat(response.getBody().getData())
+		assertThat(response.getBody().code()).isEqualTo("SUCCESS");
+		assertThat(response.getBody().data())
 				.extracting(MenuResponse::id, MenuResponse::name, MenuResponse::price)
 				.containsExactly(tuple(1L, "아메리카노", 4500));
 	}
@@ -43,6 +43,6 @@ class MenuControllerTest {
 		ResponseEntity<ApiResponse<List<MenuResponse>>> response = new MenuController(menuService).getMenus();
 
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-		assertThat(response.getBody().getData()).isEmpty();
+		assertThat(response.getBody().data()).isEmpty();
 	}
 }

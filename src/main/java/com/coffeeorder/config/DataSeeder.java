@@ -9,13 +9,18 @@ import com.coffeeorder.domain.point.repository.PointRepository;
 import java.util.List;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 /**
  * 회원가입/메뉴등록 API가 없는 발제 범위상, 초기 구동용 시드를 코드로 넣는다.
  * 이미 데이터가 있으면(재기동) 다시 넣지 않는다.
+ *
+ * <p>운영 환경({@code prod} 프로파일)에서는 등록되지 않는다 — 데모/과제용 하드코딩 시드 데이터를
+ * 운영 아티팩트에 그대로 실어 자동 실행되게 두지 않기 위함이다(#40).
  */
 @Component
+@Profile("!prod")
 public class DataSeeder implements ApplicationRunner {
 
 	private final MemberRepository memberRepository;
