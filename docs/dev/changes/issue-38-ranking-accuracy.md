@@ -10,7 +10,7 @@
 
 ## 설계
 - #38: 클래스 레벨 `@Transactional` 제거(`menuRepository.findAllById`는 자체 트랜잭션으로 충분). 이 기능(`ranking/popular`, #8)에 `design.md`가 원래 없던 걸 발견해 이번에 새로 작성.
-- #41: `KafkaTopics.ORDER_COMPLETED_DLT`(`order-completed-dlt`) 추가 + `KafkaErrorHandlingConfig`(`DefaultErrorHandler` + `DeadLetterPublishingRecoverer`, `FixedBackOff(500L, 2)`)를 전역 `CommonErrorHandler`로 등록. collector-group은 예외를 던지지 않아 영향 없음. 구현 중 DLT 토픽명에 `.`(점)을 쓰면 macOS(APFS, 대소문자 미구분)에서 임베디드 브로커가 죽는 걸 재현해 `-dlt`(하이픈)로 정정(상세: `docs/logs/ranking/consume/002-dlt.md`).
+- #41: `KafkaTopics.ORDER_COMPLETED_DLT`(`order-completed-dlt`) 추가 + `KafkaErrorHandlingConfig`에 `ranking-group` 전용 `ConcurrentKafkaListenerContainerFactory`를 만들어 그 안에만 `DefaultErrorHandler`(`DeadLetterPublishingRecoverer` + `FixedBackOff(500L, 2)`)를 구성(자체 리뷰에서 전역 빈으로 뒀을 때의 altitude 문제 발견 후 좁힘). 구현 중 DLT 토픽명에 `.`(점)을 쓰면 macOS(APFS, 대소문자 미구분)에서 임베디드 브로커가 죽는 걸 재현해 `-dlt`(하이픈)로 정정(상세: `docs/logs/ranking/consume/002-dlt.md`).
 
 ## 관련 결정·질문
 - `docs/policy/popular-menu.md`에 실패 정책 명시 완료

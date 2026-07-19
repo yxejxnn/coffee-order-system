@@ -19,7 +19,13 @@
 
 **(#41) Redis 자체 장애(연결 실패 등)에 대한 재시도·DLT**: 원래는 별도 `ErrorHandler`/DLT 설정 없이 컨슈머 예외를 그대로 전파해 Spring Kafka 기본 동작(재시도 소진 후 로그만 남기고 오프셋 커밋)에 맡겨져 있었다 — `docs/policy/popular-menu.md`가 "카운트는 정확해야 한다"고 명시한 요구사항인데, 실패 정책이 코드에도 문서에도 명시돼 있지 않은 상태였다. `collector`([#6](../../collector/consume/design.md))는 외부 HTTP 전송이라 "유실 허용"을 명시적으로 결정했지만(트레이드오프이지 방치가 아님), ranking은 정확성이 요구사항이라 같은 결정을 내릴 수 없었다.
 
-`com.coffeeorder.config.KafkaErrorHandlingConfig`에 `DefaultErrorHandler`(`DeadLetterPublishingRecoverer` + `FixedBackOff(500L, 2)`, 최초 시도 포함 총 3회)를 전역 `CommonErrorHandler` 빈으로 등록했다 — Boot의 자동구성 `ConcurrentKafkaListenerContainerFactory`가 컨텍스트의 단일 `CommonErrorHandler`를 자동으로 집어써서 `ranking-group`·`collector-group` 둘 다에 적용되지만, `collector-group`은 `CollectorClient`가 예외를 전부 내부에서 삼켜 리스너가 절대 던지지 않으므로 실질적으로는 `ranking-group`의 실패에만 영향을 준다. 재시도가 소진되면 이벤트는 조용히 사라지는 대신 `KafkaTopics.ORDER_COMPLETED_DLT`(`order-completed-dlt`) 토픽에 원본 그대로 보존된다 — 재처리는 별도 운영 작업(수동 재발행 등)으로 범위 밖에 둔다.
+`com.coffeeorder.config.KafkaErrorHandlingConfig`에 `ranking-group` 전용 `ConcurrentKafkaListenerContainerFactory`(빈 이름 `rankingKafkaListenerContainerFactory`)를 만들어 그 안에만 `DefaultErrorHandler`(`DeadLetterPublishingRecoverer` + `FixedBackOff(500L, 2)`, 최초 시도 포함 총 3회)를 구성했다. `RankingEventConsumer`의 `@KafkaListener`에 `containerFactory = "rankingKafkaListenerContainerFactory"`를 명시해 이 팩토리를 쓰도록 지정한다.
+
+**처음엔 `CommonErrorHandler`를 컨텍스트에 노출되는 공용 `@Bean`으로 만들어 Boot의 기본 자동구성 팩토리가 자동으로 집어쓰게 했으나(그러면 `ranking-group`·`collector-group` 둘 다에 적용됨), 자체 리뷰에서 이게 altitude 문제임이 지적됐다** — 이 정책은 ranking 도메인 고유의 요구(정확성)에서 나온 것인데, 전역 빈으로 만들면 향후 세 번째 `@KafkaListener`가 추가될 때 그 작성자가 전혀 모르는 채로 이 재시도+DLT 정책을 암묵적으로 상속받는다(`collector-group`이 지금 영향을 안 받는 것도 "CollectorClient가 예외를 항상 삼킨다"는 조건에 우연히 기댄 것일 뿐). 전용 컨테이너 팩토리로 좁혀서, 이 정책은 `RankingEventConsumer`가 `containerFactory`를 명시적으로 선택했을 때만 적용되고, `collector-group`은 Boot 기본 팩토리(및 그 기본 재시도 동작)를 그대로 쓴다.
+
+재시도가 소진되면 이벤트는 조용히 사라지는 대신 `KafkaTopics.ORDER_COMPLETED_DLT`(`order-completed-dlt`) 토픽에 원본 그대로 보존된다 — 재처리는 별도 운영 작업(수동 재발행 등)으로 범위 밖에 둔다.
+
+**알려진 한계(자체 리뷰에서 발견, 코드로 안 고침)**: `RankingAggregationService.aggregate()`의 `incrementScore`+`expire` 두 Redis 호출은 원자적이지 않다 — 앞쪽만 성공하고 뒤쪽에서 실패하면(또는 클라이언트 타임아웃) catch 블록이 멱등 마킹만 롤백하고 `incrementScore` 자체는 되돌리지 않아, 컨테이너 재시도가 같은 이벤트를 다시 처리하면 이론상 이중 카운팅이 가능하다. 이건 #41이 새로 만든 문제가 아니라 #7(`ranking/consume`)에서 이미 알려진 채 "Lua 스크립트로 완전히 원자화해야 없앨 수 있는데 이 저장소에 선례가 없어 보류"로 결정된 잔여 위험이다(위 "알려진 한계" 섹션 참고) — #41은 재시도 횟수를 Kafka 기본값(9회)에서 3회로 오히려 줄여 노출 구간을 약간 줄였을 뿐, 이 근본 원자성 문제 자체를 새로 만들지 않았다. 재검토 조건은 기존과 동일(Lua/파이프라이닝을 다른 곳에서도 쓰게 되거나 실측 문제가 확인되면).
 
 DLT 토픽명에 `.`(점)을 쓰지 않고 `-dlt`(하이픈)를 쓴 이유: Kafka는 토픽명의 `.`/`_`를 메트릭·로그 디렉터리 이름에서 같은 문자로 접어버리는데, 대소문자 구분이 없는 파일시스템(macOS 기본 APFS)에서 이 때문에 실제로 임베디드 브로커가 죽는 충돌을 로컬에서 직접 재현했다(`docs/logs/ranking/consume/002-dlt.md` 참고).
 
@@ -39,7 +45,7 @@ PR #28 자체 리뷰(`/code-review --comment`)에서 나온 9건 중 코드로 �
 - `com.coffeeorder.domain.ranking.consumer.RankingEventConsumer` — `@KafkaListener`.
 - `com.coffeeorder.domain.ranking.service.RankingAggregationService` — 멱등 체크 + `ZINCRBY`.
 - `com.coffeeorder.domain.ranking.RankingRedisKeys` — Redis 키 포맷 상수([#8](https://github.com/yxejxnn/coffee-order-system/issues/8)에서 `rankingKey` 재사용 예정).
-- `com.coffeeorder.config.KafkaErrorHandlingConfig`(#41) — 전역 재시도+DLT 정책. `com.coffeeorder.config.KafkaTopics.ORDER_COMPLETED_DLT`.
+- `com.coffeeorder.config.KafkaErrorHandlingConfig`(#41) — `ranking-group` 전용 재시도+DLT 정책(`rankingKafkaListenerContainerFactory`). `com.coffeeorder.config.KafkaTopics.ORDER_COMPLETED_DLT`.
 - `application.yml`의 `spring.data.redis.*`(기존 [#1](../../setup/foundation/design.md) 설정 재사용, 이 이슈에서 최초로 실사용).
 
 ## 테스트
